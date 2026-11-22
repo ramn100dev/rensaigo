@@ -17,6 +17,14 @@ It is small: an always-on **Go core** (UI, API, SQLite, scheduler, download queu
 that runs the extensions **only while there is work** and then shuts down. Idle it uses a few tens of MB of RAM.
 Cloudflare-protected sources go through an external **FlareSolverr**; the image ships no browser.
 
+<p align="center">
+  <img src="docs/img/library.webp" alt="Library" width="100%">
+</p>
+<p align="center">
+  <img src="docs/img/series.webp" alt="Series page" width="49%">
+  <img src="docs/img/sources.webp" alt="Sources" width="49%">
+</p>
+
 ## Features
 
 - **Library**: covers, filters (tracking, reading state, genre, source), favourites, progress per series.
@@ -33,7 +41,7 @@ Cloudflare-protected sources go through an external **FlareSolverr**; the image 
 - **OPDS** feed for external readers (Panels, Chunky, KOReader, Mihon…).
 - **Import**: adopts an existing CBZ library, including the `rensaio.json` files of **Rensaiō / Kaizoku**,
   without downloading anything again.
-- **Mobile friendly** UI (server-rendered, htmx, no Node).
+- **Mobile friendly** UI (server-rendered, htmx, no Node), in English and Spanish.
 - Secrets (tokens, notification channels) are stored encrypted; compact database backups on a schedule.
 
 ## Quick start

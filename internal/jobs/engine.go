@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"rensaigo/internal/i18n"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -41,6 +42,8 @@ type Engine struct {
 	active  map[int64]*Active
 	srcBusy map[string]int
 	lim     map[string]*limiter
+	served  map[int64]int64 // serie → turno en que empezó su última descarga (para repartir por turnos)
+	turn    int64
 	checkMu sync.Map // serie → *sync.Mutex: una comprobación a la vez por serie (series distintas van en paralelo)
 	Checks  int64    // comprobaciones de planificador completadas
 
@@ -631,7 +634,7 @@ func (e *Engine) dispatch(ctx context.Context) {
 		// Por turnos entre series: el 1.º pendiente de cada serie, luego el 2.º de cada una… Así una serie de 200
 		// capítulos no deja a las demás esperando a que acabe (dentro de cada serie, por número; las sustituciones
 		// de capítulos temporales, al final).
-		rows, err := e.St.DB.Query(`SELECT c.id, ss.source_id, s.title, c.name, c.number, src.name, c.upg FROM
+		rows, err := e.St.DB.Query(`SELECT c.id, ss.source_id, s.title, c.name, c.number, src.name, c.upg, c.series_id, c.rn FROM
 			(SELECT *, row_number() OVER (PARTITION BY series_id ORDER BY upg, number) AS rn FROM chapter
 				WHERE (state='queued' OR (state='downloaded' AND upg=1)) AND next_try<=?) c
 			JOIN series s ON s.id=c.series_id JOIN series_source ss ON ss.id=c.series_source_id JOIN source src ON src.id=ss.source_id
@@ -646,27 +649,41 @@ func (e *Engine) dispatch(ctx context.Context) {
 			number            float64
 			srcName           string
 			upg               bool
+			series, rn        int64
 		}
 		var cs []cand
 		for rows.Next() {
 			var c cand
-			rows.Scan(&c.id, &c.source, &c.title, &c.ch, &c.number, &c.srcName, &c.upg)
+			rows.Scan(&c.id, &c.source, &c.title, &c.ch, &c.number, &c.srcName, &c.upg, &c.series, &c.rn)
 			cs = append(cs, c)
 		}
 		rows.Close()
 		started := false
 		e.mu.Lock()
+		// rn vuelve a 1 cuando una serie termina un capítulo, así que a igual rn va primero la serie que lleva más
+		// tiempo sin empezar ninguno: si no, la de id más bajo se llevaría todos los turnos de su source
+		if e.served == nil {
+			e.served = map[int64]int64{}
+		}
+		sort.SliceStable(cs, func(i, j int) bool {
+			if cs[i].rn != cs[j].rn {
+				return cs[i].rn < cs[j].rn
+			}
+			return e.served[cs[i].series] < e.served[cs[j].series]
+		})
 		for _, c := range cs {
 			if e.active[c.id] != nil || e.srcBusy[c.source] >= e.Cfg.PerSource {
 				continue
 			}
 			label := c.ch
 			if label == "" {
-				label = "Cap. " + library.FormatNumber(c.number)
+				label = i18n.Tf("Capítulo %s", library.FormatNumber(c.number))
 			}
 			if c.upg {
-				label += " (sustitución)"
+				label += " " + i18n.T("(sustitución)")
 			}
+			e.turn++
+			e.served[c.series] = e.turn
 			a := &Active{ChapterID: c.id, Series: c.title, Chapter: label, Source: c.srcName}
 			e.active[c.id] = a
 			e.srcBusy[c.source]++

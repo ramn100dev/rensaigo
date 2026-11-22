@@ -64,6 +64,8 @@ func init() {
 		"el token de la aplicación":                                              "the application token",
 		"webhook de Discord":                                                     "Discord webhook",
 		"Pendientes":                                                             "Plan to read",
+		"Capítulo %s":                                                            "Chapter %s",
+		"(sustitución)":                                                          "(replacement)",
 		"supervisor cerrado":                                                     "supervisor closed",
 		"comando del host sin configurar":                                        "host command not configured",
 		"el host terminó sin dar señal de listo":                                 "the host exited without signalling ready",

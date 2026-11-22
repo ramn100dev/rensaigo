@@ -17,6 +17,14 @@ Es ligero: un **núcleo Go** siempre encendido (interfaz, API, SQLite, planifica
 **host JVM** fino que ejecuta las extensiones **solo mientras hay trabajo** y luego se apaga. En reposo gasta unas
 decenas de MB de RAM. Los sources con Cloudflare pasan por un **FlareSolverr** externo; la imagen no lleva navegador.
 
+<p align="center">
+  <img src="docs/img/library.webp" alt="Biblioteca" width="100%">
+</p>
+<p align="center">
+  <img src="docs/img/series.webp" alt="Ficha de una serie" width="49%">
+  <img src="docs/img/sources.webp" alt="Sources" width="49%">
+</p>
+
 ## Funciones
 
 - **Biblioteca**: portadas, filtros (seguimiento, lectura, género, source), favoritas, progreso por serie.
@@ -34,7 +42,7 @@ decenas de MB de RAM. Los sources con Cloudflare pasan por un **FlareSolverr** e
 - **OPDS** para lectores externos (Panels, Chunky, KOReader, Mihon…).
 - **Importar**: adopta una biblioteca de CBZ que ya tengas, incluidos los `rensaio.json` de **Rensaiō / Kaizoku**,
   sin volver a descargar nada.
-- Interfaz **adaptada al móvil** (renderizada en el servidor con htmx, sin Node).
+- Interfaz **adaptada al móvil** (renderizada en el servidor con htmx, sin Node), en inglés y español (Ajustes → Idioma de la interfaz).
 - Los secretos (tokens, canales de aviso) se guardan cifrados; copias compactas de la base de datos programadas.
 
 ## Arranque rápido

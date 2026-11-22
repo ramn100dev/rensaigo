@@ -9,7 +9,8 @@ Settings marked with ⚙ can also be changed from **Settings** in the UI; the va
 | `RENSAIGO_PASSWORD` | (empty) | single password; empty = no login |
 | `RENSAIGO_FLARESOLVERR_URL` | (empty) | external FlareSolverr for Cloudflare-protected sources |
 | `RENSAIGO_FLARESOLVERR_SESSION` | `rensaigo` | FlareSolverr session name |
-| `RENSAIGO_LANG` ⚙ | `es` | preferred language: filters the available extensions |
+| `RENSAIGO_UI_LANG` ⚙ | `en` | interface language: `en` or `es` |
+| `RENSAIGO_LANG` ⚙ | `en` | preferred language: filters the available extensions and which languages of a multi-language extension get enabled |
 | `RENSAIGO_ADULT` ⚙ | `no` | show +18 extensions and use the +18 version of those that have one |
 | `RENSAIGO_DEFAULT_CATEGORY` | `Manga` | folder new series go into (`/library/<Category>/<Series>/`) |
 | `RENSAIGO_CHECK_INTERVAL` ⚙ | `2h` | how often followed series are checked for new chapters |
