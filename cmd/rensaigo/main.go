@@ -20,6 +20,7 @@ import (
 	"rensaigo/internal/config"
 	"rensaigo/internal/extrepo"
 	"rensaigo/internal/hostproc"
+	"rensaigo/internal/i18n"
 	"rensaigo/internal/jobs"
 	"rensaigo/internal/jsengine"
 	"rensaigo/internal/library"
@@ -106,6 +107,7 @@ func main() {
 			}
 		}
 	}
+	i18n.Set(cfg.UILang)
 
 	// glibc crea hasta 8 arenas de malloc por núcleo; con los hilos de OkHttp eso infla el RSS del host. Dos bastan.
 	env := []string{}

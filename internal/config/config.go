@@ -43,7 +43,8 @@ type Config struct {
 	BackupKeep     int
 	DefaultCat     string
 	PrefLang       string
-	Adult          string // "sí" permite contenido +18 (extensiones +18 y versiones +18 de las normales)
+	UILang         string        // idioma de la interfaz: "en" o "es"
+	Adult          string        // "sí" permite contenido +18 (extensiones +18 y versiones +18 de las normales)
 	ExtUpdate      time.Duration // cada cuánto se actualiza el índice y las extensiones instaladas (0 = nunca)
 }
 
@@ -99,7 +100,8 @@ func Load() *Config {
 		BackupKeep:      envInt("RENSAIGO_BACKUP_KEEP", 2),
 		ExtUpdate:       envDur("RENSAIGO_EXT_UPDATE_INTERVAL", 24*time.Hour),
 		DefaultCat:      env("RENSAIGO_DEFAULT_CATEGORY", "Manga"),
-		PrefLang:        env("RENSAIGO_LANG", "es"),
+		PrefLang:        env("RENSAIGO_LANG", "en"),
+		UILang:          env("RENSAIGO_UI_LANG", "en"),
 	}
 	return c
 }

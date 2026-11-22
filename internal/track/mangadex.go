@@ -13,10 +13,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"net/url"
+	"rensaigo/internal/i18n"
 	"strconv"
 	"strings"
 	"sync"
@@ -44,11 +44,11 @@ func NewMangaDex(st *store.Store, lang func() string) *MangaDex {
 		g: gate{every: 250 * time.Millisecond}} // límite general: 5 peticiones por segundo
 }
 
-func (c *MangaDex) Key() string         { return "mangadex" }
-func (c *MangaDex) Name() string        { return "MangaDex" }
-func (c *MangaDex) User() string        { return c.get("user") }
-func (c *MangaDex) Connected() bool     { return c.get("refresh") != "" }
-func (c *MangaDex) ClientID() string    { return c.get("client_id") }
+func (c *MangaDex) Key() string      { return "mangadex" }
+func (c *MangaDex) Name() string     { return "MangaDex" }
+func (c *MangaDex) User() string     { return c.get("user") }
+func (c *MangaDex) Connected() bool  { return c.get("refresh") != "" }
+func (c *MangaDex) ClientID() string { return c.get("client_id") }
 func (c *MangaDex) Statuses() []Status {
 	return []Status{{"plan_to_read", "Pendientes"}, {"reading", "Leyendo"}, {"on_hold", "En pausa"}}
 }
@@ -60,7 +60,7 @@ func (c *MangaDex) Login(ctx context.Context, user, pass, id, secret string) err
 	c.setCredentials(id, secret) // secreto vacío con el mismo ID: el guardado
 	id, secret = c.get("client_id"), c.get("client_secret")
 	if strings.TrimSpace(user) == "" || pass == "" || id == "" || secret == "" {
-		return errors.New("rellena los cuatro campos")
+		return i18n.Errorf("rellena los cuatro campos")
 	}
 	f := url.Values{"grant_type": {"password"}, "username": {strings.TrimSpace(user)}, "password": {pass},
 		"client_id": {id}, "client_secret": {secret}}
@@ -100,13 +100,13 @@ func (c *MangaDex) tokenRequest(ctx context.Context, f url.Values) error {
 		json.Unmarshal(b, &e)
 		switch {
 		case e.Err == "invalid_grant" && f.Get("grant_type") == "password":
-			return errors.New("MangaDex no acepta ese usuario y contraseña")
+			return i18n.Errorf("MangaDex no acepta ese usuario y contraseña")
 		case e.Err == "invalid_grant":
 			return ErrSessionExpired
 		case e.Err == "unauthorized_client" || e.Err == "invalid_client":
-			return errors.New("MangaDex no acepta ese cliente: revisa el client_id y el secreto, y que el cliente esté aprobado (en su página de ajustes)")
+			return i18n.Errorf("MangaDex no acepta ese cliente: revisa el client_id y el secreto, y que el cliente esté aprobado (en su página de ajustes)")
 		}
-		return fmt.Errorf("MangaDex rechazó el token (%d): %s %s", resp.StatusCode, e.Err, e.Desc)
+		return i18n.Errorf("MangaDex rechazó el token (%d): %s %s", resp.StatusCode, e.Err, e.Desc)
 	}
 	var t struct {
 		Access  string `json:"access_token"`
@@ -114,7 +114,7 @@ func (c *MangaDex) tokenRequest(ctx context.Context, f url.Values) error {
 		Expires int64  `json:"expires_in"`
 	}
 	if json.Unmarshal(b, &t) != nil || t.Access == "" {
-		return errors.New("respuesta de token de MangaDex inválida")
+		return i18n.Errorf("respuesta de token de MangaDex inválida")
 	}
 	c.set("access", t.Access)
 	if t.Refresh != "" {
@@ -187,9 +187,9 @@ func (c *MangaDex) call(ctx context.Context, auth bool, method, path string, q u
 	b, _ := io.ReadAll(io.LimitReader(resp.Body, 16<<20))
 	switch {
 	case resp.StatusCode == 401:
-		return errors.New("MangaDex ha rechazado la sesión: vuelve a conectar desde Ajustes")
+		return i18n.Errorf("MangaDex ha rechazado la sesión: vuelve a conectar desde Ajustes")
 	case resp.StatusCode == 429:
-		return errors.New("MangaDex pide ir más despacio: prueba en un minuto")
+		return i18n.Errorf("MangaDex pide ir más despacio: prueba en un minuto")
 	case resp.StatusCode/100 != 2:
 		var e struct {
 			Errors []struct {
@@ -198,9 +198,9 @@ func (c *MangaDex) call(ctx context.Context, auth bool, method, path string, q u
 		}
 		json.Unmarshal(b, &e)
 		if len(e.Errors) > 0 {
-			return fmt.Errorf("MangaDex respondió %d: %s", resp.StatusCode, e.Errors[0].Detail)
+			return i18n.Errorf("MangaDex respondió %d: %s", resp.StatusCode, e.Errors[0].Detail)
 		}
-		return fmt.Errorf("MangaDex respondió %d", resp.StatusCode)
+		return i18n.Errorf("MangaDex respondió %d", resp.StatusCode)
 	}
 	if out != nil {
 		return json.Unmarshal(b, out)

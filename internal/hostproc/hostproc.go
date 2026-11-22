@@ -12,6 +12,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"rensaigo/internal/i18n"
 	"strconv"
 	"strings"
 	"sync"
@@ -251,7 +252,7 @@ func (s *Supervisor) ensure(ctx context.Context) (*proc, error) {
 		}
 	}
 	if s.closed.Load() {
-		return nil, &Error{Kind: "host", Message: "supervisor cerrado"}
+		return nil, &Error{Kind: "host", Message: i18n.T("supervisor cerrado")}
 	}
 	t0 := time.Now()
 	argv := s.opt.Argv
@@ -260,7 +261,7 @@ func (s *Supervisor) ensure(ctx context.Context) (*proc, error) {
 		argv = s.cmdFn(boost)
 	}
 	if len(argv) == 0 {
-		return nil, &Error{Kind: "host", Message: "comando del host sin configurar"}
+		return nil, &Error{Kind: "host", Message: i18n.T("comando del host sin configurar")}
 	}
 	cmd := exec.Command(argv[0], argv[1:]...)
 	cmd.Env = append(os.Environ(), s.opt.Env...)
@@ -277,7 +278,7 @@ func (s *Supervisor) ensure(ctx context.Context) (*proc, error) {
 		return nil, err
 	}
 	if err := cmd.Start(); err != nil {
-		return nil, &Error{Kind: "host", Message: "no se pudo arrancar el host: " + err.Error()}
+		return nil, &Error{Kind: "host", Message: i18n.Tf("no se pudo arrancar el host: %v", err)}
 	}
 	p := &proc{cmd: cmd, stdin: stdin, pending: map[int64]chan reply{}, dead: make(chan struct{}), loaded: map[string]json.RawMessage{}, started: time.Now(), boosted: boost}
 	rd := bufio.NewReaderSize(stdout, 64<<10)
@@ -299,7 +300,7 @@ func (s *Supervisor) ensure(ctx context.Context) (*proc, error) {
 						if ev.Error != nil {
 							msg = ev.Error.Message
 						}
-						ready <- &Error{Kind: "host", Message: "el host no arrancó: " + msg}
+						ready <- &Error{Kind: "host", Message: i18n.Tf("el host no arrancó: %s", msg)}
 					} else {
 						s.initMs.Store(ev.InitMs)
 						ready <- nil
@@ -322,7 +323,7 @@ func (s *Supervisor) ensure(ctx context.Context) (*proc, error) {
 			}
 		}
 		if first {
-			ready <- &Error{Kind: "host", Message: "el host terminó sin dar señal de listo"}
+			ready <- &Error{Kind: "host", Message: i18n.T("el host terminó sin dar señal de listo")}
 		}
 		cmd.Wait()
 		clean := p.stopping.Load()
@@ -332,14 +333,14 @@ func (s *Supervisor) ensure(ctx context.Context) (*proc, error) {
 			s.crashes.Add(1)
 			log.Printf("host: el proceso %d terminó de forma inesperada (%v)", cmd.Process.Pid, cmd.ProcessState)
 		}
-		msg := "el host murió durante la orden"
+		msg := i18n.T("el host murió durante la orden")
 		if oom {
 			p.oom.Store(true)
 			s.ooms.Add(1)
 			if s.opt.BoostFor > 0 {
 				s.boostTil.Store(time.Now().Add(s.opt.BoostFor).UnixNano())
 			}
-			msg = "el host se quedó sin memoria (OutOfMemoryError)"
+			msg = i18n.T("el host se quedó sin memoria (OutOfMemoryError)")
 			if s.opt.OnOOM != nil {
 				s.opt.OnOOM()
 			}
@@ -361,13 +362,13 @@ func (s *Supervisor) ensure(ctx context.Context) (*proc, error) {
 			cmd.Process.Kill()
 			<-p.dead // espera a que se procese la salida: si fue por falta de memoria, el siguiente arranque va ampliado
 			if p.oom.Load() {
-				return nil, &Error{Kind: "host", Message: "el host se quedó sin memoria al arrancar (OutOfMemoryError)", OOM: true}
+				return nil, &Error{Kind: "host", Message: i18n.T("el host se quedó sin memoria al arrancar (OutOfMemoryError)"), OOM: true}
 			}
 			return nil, err
 		}
 	case <-time.After(45 * time.Second):
 		cmd.Process.Kill()
-		return nil, &Error{Kind: "host", Message: "el host no respondió en 45 s"}
+		return nil, &Error{Kind: "host", Message: i18n.T("el host no respondió en 45 s")}
 	case <-ctx.Done():
 		cmd.Process.Kill()
 		return nil, ctx.Err()
@@ -390,7 +391,7 @@ func (s *Supervisor) call(ctx context.Context, p *proc, op string, args map[stri
 	select {
 	case <-p.dead:
 		p.pmu.Unlock()
-		return nil, &Error{Kind: "host", Message: "el host no está en marcha"}
+		return nil, &Error{Kind: "host", Message: i18n.T("el host no está en marcha")}
 	default:
 	}
 	p.pending[id] = ch
@@ -402,7 +403,7 @@ func (s *Supervisor) call(ctx context.Context, p *proc, op string, args map[stri
 		p.pmu.Lock()
 		delete(p.pending, id)
 		p.pmu.Unlock()
-		return nil, &Error{Kind: "host", Message: "escritura al host: " + err.Error()}
+		return nil, &Error{Kind: "host", Message: i18n.Tf("escritura al host: %v", err)}
 	}
 	select {
 	case r := <-ch:
@@ -414,7 +415,7 @@ func (s *Supervisor) call(ctx context.Context, p *proc, op string, args map[stri
 		p.pmu.Lock()
 		delete(p.pending, id)
 		p.pmu.Unlock()
-		return nil, &Error{Kind: "host", Message: "tiempo de espera agotado (" + op + ")"}
+		return nil, &Error{Kind: "host", Message: i18n.Tf("tiempo de espera agotado (%s)", op)}
 	}
 }
 

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"rensaigo/internal/i18n"
 	"time"
 
 	"rensaigo/internal/hostproc"
@@ -43,7 +44,7 @@ func (e *Engine) Probe(ctx context.Context, sourceID string) *ProbeResult {
 	}
 	r.Mangas = len(mangas)
 	if len(mangas) == 0 {
-		r.Step, r.Kind, r.Error = "popular", "empty", "la lista de populares llegó vacía"
+		r.Step, r.Kind, r.Error = "popular", "empty", i18n.T("la lista de populares llegó vacía")
 		return r
 	}
 	var chs []Chapter
@@ -61,7 +62,7 @@ func (e *Engine) Probe(ctx context.Context, sourceID string) *ProbeResult {
 	}
 	r.Chapters = len(chs)
 	if len(chs) == 0 {
-		r.Step, r.Kind, r.Error = "details", "empty", "las series probadas no tienen capítulos"
+		r.Step, r.Kind, r.Error = "details", "empty", i18n.T("las series probadas no tienen capítulos")
 		return r
 	}
 	ch := chs[len(chs)-1] // el más antiguo: suele ser gratuito
@@ -79,7 +80,7 @@ func (e *Engine) Probe(ctx context.Context, sourceID string) *ProbeResult {
 	}
 	r.Pages = len(pr.Pages)
 	if len(pr.Pages) == 0 {
-		r.Step, r.Kind, r.Error = "pages", "empty", "el capítulo no devolvió páginas"
+		r.Step, r.Kind, r.Error = "pages", "empty", i18n.T("el capítulo no devolvió páginas")
 		return r
 	}
 	out := filepath.Join(e.Cfg.Path("tmp"), "probe-"+sourceID+".img")

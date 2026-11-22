@@ -6,9 +6,9 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"io"
+	"rensaigo/internal/i18n"
 	"strings"
 
 	"github.com/smallstep/pkcs7"
@@ -31,7 +31,7 @@ func VerifyJar(path, wantFingerprint string) (string, error) {
 	var sfName, sigName string
 	for _, f := range zr.File {
 		if _, dup := files[f.Name]; dup {
-			return "", fmt.Errorf("entrada repetida en el jar: %s", f.Name)
+			return "", i18n.Errorf("entrada repetida en el jar: %s", f.Name)
 		}
 		files[f.Name] = f
 		up := strings.ToUpper(f.Name)
@@ -39,19 +39,19 @@ func VerifyJar(path, wantFingerprint string) (string, error) {
 			switch {
 			case strings.HasSuffix(up, ".SF"):
 				if sfName != "" {
-					return "", errors.New("más de un fichero .SF")
+					return "", i18n.Errorf("más de un fichero .SF")
 				}
 				sfName = f.Name
 			case strings.HasSuffix(up, ".RSA"), strings.HasSuffix(up, ".EC"), strings.HasSuffix(up, ".DSA"):
 				if sigName != "" {
-					return "", errors.New("más de un bloque de firma")
+					return "", i18n.Errorf("más de un bloque de firma")
 				}
 				sigName = f.Name
 			}
 		}
 	}
 	if sfName == "" || sigName == "" || files["META-INF/MANIFEST.MF"] == nil {
-		return "", errors.New("el jar no está firmado (faltan MANIFEST.MF, .SF o el bloque de firma)")
+		return "", i18n.Errorf("el jar no está firmado (faltan MANIFEST.MF, .SF o el bloque de firma)")
 	}
 	read := func(name string) ([]byte, error) {
 		rc, err := files[name].Open()
@@ -75,27 +75,27 @@ func VerifyJar(path, wantFingerprint string) (string, error) {
 	}
 	p7, err := pkcs7.Parse(sig)
 	if err != nil {
-		return "", fmt.Errorf("bloque de firma ilegible: %w", err)
+		return "", i18n.Errorf("bloque de firma ilegible: %w", err)
 	}
 	p7.Content = sf
 	if err := p7.Verify(); err != nil {
-		return "", fmt.Errorf("la firma no valida el .SF: %w", err)
+		return "", i18n.Errorf("la firma no valida el .SF: %w", err)
 	}
 	signer := p7.GetOnlySigner()
 	if signer == nil {
-		return "", errors.New("se esperaba exactamente un firmante")
+		return "", i18n.Errorf("se esperaba exactamente un firmante")
 	}
 	sum := sha256.Sum256(signer.Raw)
 	fp := hex.EncodeToString(sum[:])
 	if !strings.EqualFold(fp, wantFingerprint) {
-		return fp, fmt.Errorf("firmante inesperado: %s (se esperaba %s)", fp, wantFingerprint)
+		return fp, i18n.Errorf("firmante inesperado: %s (se esperaba %s)", fp, wantFingerprint)
 	}
 	// .SF -> manifiesto completo
 	sfMain, _ := parseManifest(sf)
 	want := sfMain["SHA-256-Digest-Manifest"]
 	mfSum := sha256.Sum256(mf)
 	if want == "" || want != base64.StdEncoding.EncodeToString(mfSum[:]) {
-		return fp, errors.New("el digest del manifiesto no coincide con el .SF")
+		return fp, i18n.Errorf("el digest del manifiesto no coincide con el .SF")
 	}
 	// manifiesto -> cada fichero
 	_, entries := parseManifest(mf)
@@ -105,7 +105,7 @@ func VerifyJar(path, wantFingerprint string) (string, error) {
 		}
 		digest, ok := entries[name]
 		if !ok {
-			return fp, fmt.Errorf("fichero sin firmar en el jar: %s", name)
+			return fp, i18n.Errorf("fichero sin firmar en el jar: %s", name)
 		}
 		rc, err := f.Open()
 		if err != nil {

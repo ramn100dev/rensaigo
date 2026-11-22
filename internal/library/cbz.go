@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"rensaigo/internal/i18n"
 	"sort"
 	"strconv"
 	"strings"
@@ -141,7 +142,7 @@ func WriteCBZ(dest string, images []string, info *ComicInfo) (int64, error) {
 		ext := SniffExt(head[:n])
 		if ext == "" {
 			in.Close()
-			return 0, fmt.Errorf("la página %d no es una imagen reconocida", i+1)
+			return 0, i18n.Errorf("la página %d no es una imagen reconocida", i+1)
 		}
 		if _, err := in.Seek(0, io.SeekStart); err != nil {
 			in.Close()

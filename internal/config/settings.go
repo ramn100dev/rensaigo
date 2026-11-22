@@ -1,9 +1,9 @@
 package config
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
+	"rensaigo/internal/i18n"
 	"slices"
 	"strconv"
 	"strings"
@@ -28,6 +28,8 @@ type Setting struct {
 var Langs = []string{"es", "es-419", "en", "pt-BR", "fr", "it", "de", "ja", "all"}
 
 var Settings = []Setting{
+	{Key: "ui_lang", Group: "General", Label: "Idioma de la interfaz", Kind: "choice", Options: []string{"en", "es"},
+		Help: "Idioma de la web, los avisos y las notificaciones.", ptrS: func(c *Config) *string { return &c.UILang }},
 	{Key: "lang", Group: "General", Label: "Idioma preferido", Kind: "choice", Options: Langs,
 		Help: "Idioma con el que se filtran de entrada las extensiones disponibles en Sources.", ptrS: func(c *Config) *string { return &c.PrefLang }},
 	{Key: "adult", Group: "General", Label: "Contenido +18", Kind: "choice", Options: []string{"no", "sí"},
@@ -91,26 +93,26 @@ func (s *Setting) Apply(c *Config, v string) (string, error) {
 	case "dur":
 		d, err := time.ParseDuration(v)
 		if err != nil {
-			return "", fmt.Errorf("%s: «%s» no es una duración (usa 30s, 15m, 2h…)", s.Label, v)
+			return "", i18n.Errorf("%s: «%s» no es una duración (usa 30s, 15m, 2h…)", i18n.T(s.Label), v)
 		}
 		if d.Seconds() < s.Min {
-			return "", fmt.Errorf("%s: el mínimo es %s", s.Label, fmtDur(time.Duration(s.Min)*time.Second))
+			return "", i18n.Errorf("%s: el mínimo es %s", i18n.T(s.Label), fmtDur(time.Duration(s.Min)*time.Second))
 		}
 		*s.ptrD(c) = d
 		return fmtDur(d), nil
 	case "int":
 		n, err := strconv.Atoi(v)
 		if err != nil || float64(n) < s.Min {
-			return "", fmt.Errorf("%s: tiene que ser un número entero ≥ %v", s.Label, s.Min)
+			return "", i18n.Errorf("%s: tiene que ser un número entero ≥ %v", i18n.T(s.Label), s.Min)
 		}
 		*s.ptrI(c) = n
 		return strconv.Itoa(n), nil
 	}
 	if v == "" {
-		return "", fmt.Errorf("%s: no puede quedar vacío", s.Label)
+		return "", i18n.Errorf("%s: no puede quedar vacío", i18n.T(s.Label))
 	}
 	if s.Kind == "choice" && !slices.Contains(s.Options, v) {
-		return "", fmt.Errorf("%s: opción desconocida «%s»", s.Label, v)
+		return "", i18n.Errorf("%s: opción desconocida «%s»", i18n.T(s.Label), v)
 	}
 	*s.ptrS(c) = v
 	return v, nil
@@ -133,21 +135,21 @@ func fmtDur(d time.Duration) string {
 func setDownloadPath(c *Config, v string) (string, error) {
 	p := filepath.Clean(v)
 	if v == "" || !filepath.IsAbs(p) {
-		return "", fmt.Errorf("Carpeta de descarga: tiene que ser una ruta completa, empezando por /")
+		return "", i18n.Errorf("Carpeta de descarga: tiene que ser una ruta completa, empezando por /")
 	}
 	dir, base := filepath.Dir(p), filepath.Base(p)
 	if dir == "/" {
-		return "", fmt.Errorf("Carpeta de descarga: usa al menos dos niveles (p. ej. /mangas/Manga), no una carpeta de la raíz")
+		return "", i18n.Errorf("Carpeta de descarga: usa al menos dos niveles (p. ej. /mangas/Manga), no una carpeta de la raíz")
 	}
 	if !onVolume(p) {
-		return "", fmt.Errorf("Carpeta de descarga: %s no está en un volumen montado. Dentro de Docker se escribiría en el propio contenedor y se perdería al recrearlo: monta la carpeta con -v (p. ej. -v %s:%s)", p, dir, dir)
+		return "", i18n.Errorf("Carpeta de descarga: %s no está en un volumen montado. Dentro de Docker se escribiría en el propio contenedor y se perdería al recrearlo: monta la carpeta con -v (p. ej. -v %s:%s)", p, dir, dir)
 	}
 	if err := os.MkdirAll(p, 0o755); err != nil {
-		return "", fmt.Errorf("Carpeta de descarga: no se puede crear %s (%v). En Docker solo existen las rutas montadas como volumen", p, err)
+		return "", i18n.Errorf("Carpeta de descarga: no se puede crear %s (%v). En Docker solo existen las rutas montadas como volumen", p, err)
 	}
 	f, err := os.CreateTemp(p, ".rensaigo-escritura-*")
 	if err != nil {
-		return "", fmt.Errorf("Carpeta de descarga: no se puede escribir en %s (%v). Revisa los permisos o que el volumen no esté montado como solo lectura", p, err)
+		return "", i18n.Errorf("Carpeta de descarga: no se puede escribir en %s (%v). Revisa los permisos o que el volumen no esté montado como solo lectura", p, err)
 	}
 	f.Close()
 	os.Remove(f.Name())

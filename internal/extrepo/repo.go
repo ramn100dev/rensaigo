@@ -8,13 +8,13 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
+	"rensaigo/internal/i18n"
 	"strings"
 	"time"
 
@@ -69,11 +69,11 @@ func (r *Repo) Refresh(ctx context.Context) (int, error) {
 	// repo.json NO va firmado: lo único que se puede comprobar es que declara la huella que esperamos.
 	// La garantía real es la firma de cada jar contra esa huella fijada (VerifyJar).
 	if !strings.EqualFold(rj.Meta.Fingerprint, r.Fingerprint) {
-		return 0, fmt.Errorf("repo.json declara la huella %q y se esperaba %q: repositorio rechazado", rj.Meta.Fingerprint, r.Fingerprint)
+		return 0, i18n.Errorf("repo.json declara la huella %q y se esperaba %q: repositorio rechazado", rj.Meta.Fingerprint, r.Fingerprint)
 	}
 	iu, err := url.Parse(rj.IndexV2)
 	if err != nil || iu.Scheme != "https" {
-		return 0, errors.New("repo.json: index_v2 inválido")
+		return 0, i18n.Errorf("repo.json: index_v2 inválido")
 	}
 	gz, err := r.get(ctx, rj.IndexV2, 16<<20)
 	if err != nil {
@@ -94,7 +94,7 @@ func (r *Repo) Refresh(ctx context.Context) (int, error) {
 		return 0, err
 	}
 	if !strings.EqualFold(idx.SigningKey, r.Fingerprint) {
-		return 0, fmt.Errorf("index.pb declara la huella %q, distinta de la fijada", idx.SigningKey)
+		return 0, i18n.Errorf("index.pb declara la huella %q, distinta de la fijada", idx.SigningKey)
 	}
 	// release-assets.json: hash de CONTENIDO por paquete (independiente de versión y firma; no es el sha256 del jar).
 	// Se guarda para detectar cambios de contenido; si no se puede bajar, se sigue sin él.
@@ -153,12 +153,12 @@ func (r *Repo) UninstallTrial(pkg string) error { return r.uninstall(pkg, true) 
 func (r *Repo) uninstall(pkg string, quiet bool) error {
 	var name, jar string
 	if err := r.St.DB.QueryRow(`SELECT name, jar_path FROM ext WHERE pkg=?`, pkg).Scan(&name, &jar); err != nil {
-		return fmt.Errorf("%s no está instalada", pkg)
+		return i18n.Errorf("%s no está instalada", pkg)
 	}
 	var n int
 	r.St.DB.QueryRow(`SELECT count(*) FROM series_source ss JOIN source s ON s.id=ss.source_id WHERE s.pkg=?`, pkg).Scan(&n)
 	if n > 0 {
-		return fmt.Errorf("%s la usan %d series: quítasela antes desde su ficha", name, n)
+		return i18n.Errorf("%s la usan %d series: quítasela antes desde su ficha", name, n)
 	}
 	tx, err := r.St.DB.Begin()
 	if err != nil {
@@ -208,13 +208,13 @@ func (r *Repo) install(ctx context.Context, pkg string, trial bool) ([]SourceInf
 	err := r.St.DB.QueryRow(`SELECT name,version,version_code,jar_url,coalesce(content_hash,'') FROM repo_ext WHERE pkg=?`, pkg).
 		Scan(&name, &version, &vcode, &jarURL, &chash)
 	if err == sql.ErrNoRows {
-		return nil, fmt.Errorf("%s no está en el índice (actualiza el repositorio)", pkg)
+		return nil, i18n.Errorf("%s no está en el índice (actualiza el repositorio)", pkg)
 	} else if err != nil {
 		return nil, err
 	}
 	u, err := url.Parse(jarURL)
 	if err != nil || u.Scheme != "https" || !strings.HasSuffix(u.Path, ".jar") {
-		return nil, fmt.Errorf("jarUrl no admitida: %s", jarURL)
+		return nil, i18n.Errorf("jarUrl no admitida: %s", jarURL)
 	}
 	if err := os.MkdirAll(r.Dir, 0o755); err != nil {
 		return nil, err
@@ -232,7 +232,7 @@ func (r *Repo) install(ctx context.Context, pkg string, trial bool) ([]SourceInf
 	// Verificación ANTES de que el jar toque el host.
 	if _, err := VerifyJar(tmp, r.Fingerprint); err != nil {
 		r.St.Event("seguridad", "jar rechazado %s: %v", pkg, err)
-		return nil, fmt.Errorf("verificación de %s: %w", pkg, err)
+		return nil, i18n.Errorf("verificación de %s: %w", pkg, err)
 	}
 	sum := sha256.Sum256(b)
 	if err := os.Rename(tmp, final); err != nil {
@@ -241,7 +241,7 @@ func (r *Repo) install(ctx context.Context, pkg string, trial bool) ([]SourceInf
 	res, err := r.Host.CallJar(ctx, final, "load", nil)
 	if err != nil {
 		os.Remove(final)
-		return nil, fmt.Errorf("el host no pudo cargar %s: %w", pkg, err)
+		return nil, i18n.Errorf("el host no pudo cargar %s: %w", pkg, err)
 	}
 	var lr struct {
 		Sources []SourceInfo `json:"sources"`
@@ -335,7 +335,7 @@ func (r *Repo) UseVersion(ctx context.Context, pkg, version string) error {
 	var code int64
 	if err := r.St.DB.QueryRow(`SELECT jar_path, jar_sha256, coalesce(content_hash,''), version_code FROM ext_old WHERE pkg=? AND version=?`,
 		pkg, version).Scan(&jar, &sum, &chash, &code); err != nil {
-		return fmt.Errorf("la versión %s de %s no está guardada", version, pkg)
+		return i18n.Errorf("la versión %s de %s no está guardada", version, pkg)
 	}
 	f, err := os.Open(jar)
 	if err != nil {
@@ -345,11 +345,11 @@ func (r *Repo) UseVersion(ctx context.Context, pkg, version string) error {
 	_, err = io.Copy(h, f)
 	f.Close()
 	if err != nil || hex.EncodeToString(h.Sum(nil)) != sum {
-		return fmt.Errorf("el jar de la versión %s ha cambiado en disco: no se usa", version)
+		return i18n.Errorf("el jar de la versión %s ha cambiado en disco: no se usa", version)
 	}
 	res, err := r.Host.CallJar(ctx, jar, "load", nil)
 	if err != nil {
-		return fmt.Errorf("el host no pudo cargar la versión %s: %w", version, err)
+		return i18n.Errorf("el host no pudo cargar la versión %s: %w", version, err)
 	}
 	var lr struct {
 		Sources []SourceInfo `json:"sources"`
@@ -364,7 +364,7 @@ func (r *Repo) UseVersion(ctx context.Context, pkg, version string) error {
 	var curCode int64
 	if err := tx.QueryRow(`SELECT name, jar_path, version, version_code, jar_sha256, coalesce(content_hash,'') FROM ext WHERE pkg=?`, pkg).
 		Scan(&name, &curJar, &curVer, &curCode, &curSum, &curHash); err != nil {
-		return fmt.Errorf("%s no está instalada", pkg)
+		return i18n.Errorf("%s no está instalada", pkg)
 	}
 	tx.Exec(`INSERT OR REPLACE INTO ext_old(pkg,version,version_code,jar_path,jar_sha256,content_hash,kept_at) VALUES(?,?,?,?,?,?,?)`,
 		pkg, curVer, curCode, curJar, curSum, curHash, time.Now().Unix())
@@ -419,7 +419,7 @@ func (r *Repo) JarFor(sourceID string) (jar string, err error) {
 	var sum string
 	err = r.St.DB.QueryRow(`SELECT e.jar_path, e.jar_sha256 FROM source s JOIN ext e ON e.pkg=s.pkg WHERE s.id=?`, sourceID).Scan(&jar, &sum)
 	if err != nil {
-		return "", fmt.Errorf("source %s sin extensión instalada", sourceID)
+		return "", i18n.Errorf("source %s sin extensión instalada", sourceID)
 	}
 	if v, ok := verified.Load(jar); ok && v.(string) == sum {
 		return jar, nil
@@ -434,7 +434,7 @@ func (r *Repo) JarFor(sourceID string) (jar string, err error) {
 		return "", err
 	}
 	if hex.EncodeToString(h.Sum(nil)) != sum {
-		return "", fmt.Errorf("el jar %s ha cambiado en disco desde su instalación: no se carga", filepath.Base(jar))
+		return "", i18n.Errorf("el jar %s ha cambiado en disco desde su instalación: no se carga", filepath.Base(jar))
 	}
 	verified.Store(jar, sum)
 	return jar, nil

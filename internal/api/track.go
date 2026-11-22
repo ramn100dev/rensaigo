@@ -24,6 +24,7 @@ import (
 	"strings"
 	"time"
 
+	"rensaigo/internal/i18n"
 	"rensaigo/internal/jobs"
 	"rensaigo/internal/track"
 )
@@ -138,7 +139,7 @@ func (s *Server) panelData(r *http.Request, t track.Service) M {
 		d["ClientID"], d["HasSecret"] = md.ClientID(), md.HasSecret()
 	}
 	if al, ok := t.(*track.AniList); ok && al.Expired() {
-		d["Err"] = "La sesión de AniList caducó (dura un año): vuelve a conectar."
+		d["Err"] = i18n.T("La sesión de AniList caducó (dura un año): vuelve a conectar.")
 	}
 	return d
 }
@@ -163,7 +164,7 @@ func (s *Server) trkCredentials(w http.ResponseWriter, r *http.Request) {
 	}
 	id := strings.TrimSpace(r.FormValue("client_id"))
 	if id == "" {
-		s.renderPanel(w, r, t, M{"Err": "Pega el Client ID de tu app de " + t.Name()})
+		s.renderPanel(w, r, t, M{"Err": i18n.Tf("Pega el Client ID de tu app de %s", t.Name())})
 		return
 	}
 	o.SetCredentials(id, r.FormValue("client_secret"))
@@ -228,7 +229,7 @@ func (s *Server) mdLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.St.Event("mangadex", "MangaDex conectado como %s", md.User())
-	setToast(w, "MangaDex conectado")
+	setToast(w, i18n.T("MangaDex conectado"))
 	s.renderPanel(w, r, t, nil)
 }
 
@@ -411,7 +412,7 @@ func (s *Server) seriesTrkLink(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		s.link(ctx, id, t, e)
-		setToast(w, "Vinculada con «"+e.Title+"» de "+t.Name())
+		setToast(w, i18n.Tf("Vinculada con «%s» de %s", e.Title, t.Name()))
 		s.renderBox(w, id, t, nil)
 		return
 	}
@@ -424,12 +425,12 @@ func (s *Server) seriesTrkLink(w http.ResponseWriter, r *http.Request) {
 	}
 	if b >= 0 && score >= 0.9 {
 		s.link(ctx, id, t, &es[b])
-		setToast(w, "Vinculada con «"+es[b].Title+"» de "+t.Name())
+		setToast(w, i18n.Tf("Vinculada con «%s» de %s", es[b].Title, t.Name()))
 		s.renderBox(w, id, t, nil)
 		return
 	}
 	if len(es) == 0 {
-		s.renderBox(w, id, t, M{"Err": "No aparece en " + t.Name()})
+		s.renderBox(w, id, t, M{"Err": i18n.Tf("No aparece en %s", t.Name())})
 		return
 	}
 	s.renderBox(w, id, t, M{"Cands": es})
@@ -469,9 +470,9 @@ func (s *Server) trkLinkAll(w http.ResponseWriter, r *http.Request) {
 			miss = append(miss, title)
 		}
 	}
-	msg := fmt.Sprintf("%d series vinculadas", len(done))
+	msg := i18n.Tf("%d series vinculadas", len(done))
 	if len(miss) > 0 {
-		msg += fmt.Sprintf(" · %d sin coincidencia clara (vincúlalas desde su ficha): %s", len(miss), strings.Join(miss, ", "))
+		msg += " · " + i18n.Tf("%d sin coincidencia clara (vincúlalas desde su ficha): %s", len(miss), strings.Join(miss, ", "))
 	}
 	s.renderPanel(w, r, t, M{"Msg": msg})
 }
@@ -592,7 +593,7 @@ func (s *Server) trkList(w http.ResponseWriter, r *http.Request) {
 	}
 	d := M{}
 	if len(on) == 0 {
-		d["Err"] = "Conecta una cuenta en Ajustes → Conexiones."
+		d["Err"] = i18n.T("Conecta una cuenta en Ajustes → Conexiones.")
 		s.render(w, "track_list", d)
 		return
 	}
@@ -603,6 +604,9 @@ func (s *Server) trkList(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	sts := t.Statuses()
+	for i := range sts {
+		sts[i].L = i18n.T(sts[i].L)
+	}
 	st := sts[0].V
 	for _, x := range sts {
 		if x.V == r.FormValue("status") {
@@ -672,7 +676,7 @@ func (s *Server) trkSearch(w http.ResponseWriter, r *http.Request) {
 		row["Picked"] = 0
 	}
 	if len(cands) == 0 {
-		row["Err"] = "No aparece en tus sources"
+		row["Err"] = i18n.T("No aparece en tus sources")
 	}
 	s.render(w, "track_row", M{"Row": row})
 }
@@ -710,6 +714,6 @@ func (s *Server) trkImport(w http.ResponseWriter, r *http.Request) {
 	var name string
 	s.St.DB.QueryRow(`SELECT name FROM source WHERE id=?`, src).Scan(&name)
 	row["Done"], row["SeriesID"] = name, id
-	libChanged(w, "«"+e.Title+"» añadida a la biblioteca")
+	libChanged(w, i18n.Tf("«%s» añadida a la biblioteca", e.Title))
 	s.render(w, "track_row", M{"Row": row})
 }

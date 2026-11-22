@@ -1,5 +1,5 @@
 {{define "search_results"}}
-{{if not .Found}}<p class="mut">Ningún source tiene resultados para esa búsqueda.</p>{{end}}
+{{if not .Found}}<p class="mut">{{t "Ningún source tiene resultados para esa búsqueda."}}</p>{{end}}
 {{range .Groups}}{{if .Mangas}}{{$src := .Source}}
 <h3 class="rg">{{$src.name}} <span class="mut small">{{len .Mangas}}</span></h3>
 <div class="results">{{range .Mangas}}<form class="r" hx-post="/series/follow" {{if not $.AddTo}}hx-target="this" hx-swap="outerHTML"{{end}} hx-disabled-elt="find button">
@@ -8,16 +8,16 @@
 <input type="hidden" name="source" value="{{$src.id}}"><input type="hidden" name="url" value="{{.URL}}">
 <input type="hidden" name="title" value="{{.Title}}"><input type="hidden" name="memo" value="{{printf "%s" .Memo}}"><input type="hidden" name="thumbnail" value="{{.Thumbnail}}">
 <input type="hidden" name="category" value="{{$.Cat}}"><input type="hidden" name="add_to" value="{{$.AddTo}}"><input type="hidden" name="auto" value="1">
-<button class="pri sm"><span class="lbl">{{if $.AddTo}}Usar este{{else}}Añadir{{end}}</span><span class="busy">{{icon "refresh"}}Añadiendo…</span></button>
+<button class="pri sm"><span class="lbl">{{if $.AddTo}}{{t "Usar este"}}{{else}}{{t "Añadir"}}{{end}}</span><span class="busy">{{icon "refresh"}}{{t "Añadiendo…"}}</span></button>
 </form>{{end}}</div>
 {{end}}{{end}}
-{{if .Failed}}<p class="mut small">Sin respuesta: {{.Failed}}</p>{{end}}
+{{if .Failed}}<p class="mut small">{{t "Sin respuesta:"}} {{.Failed}}</p>{{end}}
 {{end}}
 
 {{define "follow_done"}}<div class="r added">
 <img loading="lazy" referrerpolicy="no-referrer" src="{{.Thumbnail}}" alt="">
 <b title="{{.Title}}">{{.Title}}</b>
-<a class="btn sm" href="/library/{{.ID}}">{{icon "check"}}Añadida</a>
+<a class="btn sm" href="/library/{{.ID}}">{{icon "check"}}{{t "Añadida"}}</a>
 </div>{{end}}
 
 {{define "queue"}}{{template "hdr_queue" .}}{{end}}

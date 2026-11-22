@@ -13,6 +13,8 @@ import (
 	"time"
 
 	_ "modernc.org/sqlite"
+
+	"rensaigo/internal/i18n"
 )
 
 type Store struct {
@@ -155,8 +157,10 @@ func (s *Store) Set(key, value string) {
 }
 
 // Event guarda un suceso visible en la UI. La tabla se recorta a los últimos 300.
+// Event apunta algo en la actividad. El texto se guarda ya traducido al idioma de la interfaz; el tipo (kind) se
+// guarda en español y se traduce al mostrarlo.
 func (s *Store) Event(kind, format string, args ...any) {
-	msg := fmt.Sprintf(format, args...)
+	msg := i18n.Tf(format, args...)
 	s.DB.Exec(`INSERT INTO event(at,kind,msg) VALUES(?,?,?)`, time.Now().Unix(), kind, msg)
 	s.DB.Exec(`DELETE FROM event WHERE id <= (SELECT max(id) FROM event) - 300`)
 }

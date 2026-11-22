@@ -1,34 +1,34 @@
 {{define "system"}}
 <div class="sysgrid">
 <section class="panel">
-<div class="panel-h"><h2>Estado</h2><span class="mut small">en marcha desde hace {{dur .St.UptimeS}}</span></div>
+<div class="panel-h"><h2>{{t "Estado"}}</h2><span class="mut small">{{tf "en marcha desde hace %s" (dur .St.UptimeS)}}</span></div>
 <div class="stats">
-<div class="stat"><span class="k">Núcleo</span><b>{{kmb .St.CoreRSSKb}}</b><span class="mut small">pico {{kmb .St.CoreHWMKb}}</span></div>
-<div class="stat"><span class="k">Host de extensiones</span>{{if .St.Host.Running}}<b>{{kmb .St.Host.RSSKb}}</b><span class="mut small"><span class="dot s-ok"></span>en marcha · {{.St.Host.LoadedJars}} ext.</span>{{else}}<b>apagado</b><span class="mut small">{{.St.Host.Starts}} arranques · {{.St.Host.Crashes}} caídas</span>{{end}}</div>
-<div class="stat"><span class="k">Cola</span><b>{{len .St.Queue.Active}} <span class="mut">/ {{index .St.Queue.Counts "queued"}}</span></b><span class="mut small">activas / en cola{{with index .St.Queue.Counts "failed"}} · <span class="bad">{{.}} fallidas</span>{{end}}</span></div>
-<div class="stat"><span class="k">Biblioteca</span><b>{{.St.Series}} series</b><span class="mut small">{{index .St.Queue.Counts "downloaded"}} capítulos en disco</span></div>
-<div class="stat"><span class="k">Disco de la app</span><b>{{mb .St.DBBytes}}</b><span class="mut small">BD · portadas {{mb .St.ThumbBytes}}</span></div>
-<div class="stat"><span class="k">Copia de la BD</span><b>{{if .LastBackup}}{{ago .LastBackup}}{{else}}ninguna{{end}}</b><span class="mut small">se conservan {{.Cfg.BackupKeep}}</span></div>
+<div class="stat"><span class="k">{{t "Núcleo"}}</span><b>{{kmb .St.CoreRSSKb}}</b><span class="mut small">{{t "pico"}} {{kmb .St.CoreHWMKb}}</span></div>
+<div class="stat"><span class="k">{{t "Host de extensiones"}}</span>{{if .St.Host.Running}}<b>{{kmb .St.Host.RSSKb}}</b><span class="mut small"><span class="dot s-ok"></span>{{t "en marcha"}} · {{.St.Host.LoadedJars}} ext.</span>{{else}}<b>{{t "apagado"}}</b><span class="mut small">{{tf "%d arranques · %d caídas" .St.Host.Starts .St.Host.Crashes}}</span>{{end}}</div>
+<div class="stat"><span class="k">{{t "Cola"}}</span><b>{{len .St.Queue.Active}} <span class="mut">/ {{index .St.Queue.Counts "queued"}}</span></b><span class="mut small">{{t "activas / en cola"}}{{with index .St.Queue.Counts "failed"}} · <span class="bad">{{tf "%d fallidas" .}}</span>{{end}}</span></div>
+<div class="stat"><span class="k">{{t "Biblioteca"}}</span><b>{{tf "%d series" .St.Series}}</b><span class="mut small">{{tf "%d capítulos en disco" (index .St.Queue.Counts "downloaded")}}</span></div>
+<div class="stat"><span class="k">{{t "Disco de la app"}}</span><b>{{mb .St.DBBytes}}</b><span class="mut small">{{t "BD · portadas"}} {{mb .St.ThumbBytes}}</span></div>
+<div class="stat"><span class="k">{{t "Copia de la BD"}}</span><b>{{if .LastBackup}}{{ago .LastBackup}}{{else}}{{t "ninguna"}}{{end}}</b><span class="mut small">{{tf "se conservan %d" .Cfg.BackupKeep}}</span></div>
 </div>
 <div class="bigbtns">
-<button class="act" hx-post="/system/check-all">{{icon "refresh"}}<span>Comprobar todas las series</span></button>
-<button class="act" hx-post="/system/backup" hx-indicator="this">{{icon "db"}}<span>Copiar la BD ahora</span></button>
-<button class="act" hx-post="/system/host-stop" {{if not .St.Host.Running}}disabled{{end}}>{{icon "power"}}<span>Apagar el host</span></button>
-{{if .JS}}<button class="act" hx-post="/system/js-remove" hx-confirm="¿Quitar el motor JavaScript?">{{icon "code"}}<span>Quitar motor JS <span class="mut">({{mb .JSBytes}})</span></span></button>
-{{else}}<button class="act" hx-post="/system/js-install" hx-indicator="this">{{icon "code"}}<span>Instalar motor JS</span></button>{{end}}
-<button class="act" id="conn-btn" hx-get="/connections" hx-target="#modal-body" data-modal="Conexiones">{{icon "link"}}<span>Conexiones{{if .Conns}} <span class="mut">· {{.Conns}}</span>{{end}}</span></button>
+<button class="act" hx-post="/system/check-all">{{icon "refresh"}}<span>{{t "Comprobar todas las series"}}</span></button>
+<button class="act" hx-post="/system/backup" hx-indicator="this">{{icon "db"}}<span>{{t "Copiar la BD ahora"}}</span></button>
+<button class="act" hx-post="/system/host-stop" {{if not .St.Host.Running}}disabled{{end}}>{{icon "power"}}<span>{{t "Apagar el host"}}</span></button>
+{{if .JS}}<button class="act" hx-post="/system/js-remove" hx-confirm="{{t "¿Quitar el motor JavaScript?"}}">{{icon "code"}}<span>{{t "Quitar motor JS"}} <span class="mut">({{mb .JSBytes}})</span></span></button>
+{{else}}<button class="act" hx-post="/system/js-install" hx-indicator="this">{{icon "code"}}<span>{{t "Instalar motor JS"}}</span></button>{{end}}
+<button class="act" id="conn-btn" hx-get="/connections" hx-target="#modal-body" data-modal="{{t "Conexiones"}}">{{icon "link"}}<span>{{t "Conexiones"}}{{if .Conns}} <span class="mut">· {{.Conns}}</span>{{end}}</span></button>
 </div>
 <p class="mut small foot">
-<span class="tip" tabindex="0" data-tip="GraalJS. Lo necesitan unas 30 extensiones (estado «requiere JavaScript»). Son 70 MB de Maven Central con sha256 verificado, y solo gasta memoria (unos 90 MB en el host) mientras una extensión ejecuta JavaScript.">?</span>
-Motor JavaScript {{if .JS}}instalado{{else}}no instalado{{end}}{{if .JSNeed}} · lo piden: {{range .JSNeed}}{{.name}} {{end}}{{end}}
-· Cloudflare: {{if .Flare}}FlareSolverr en {{.Cfg.FlareSolverr}}{{else}}sin FlareSolverr{{end}}</p>
+<span class="tip" tabindex="0" data-tip="{{t "GraalJS. Lo necesitan unas 30 extensiones (estado «requiere JavaScript»). Son 70 MB de Maven Central con sha256 verificado, y solo gasta memoria (unos 90 MB en el host) mientras una extensión ejecuta JavaScript."}}">?</span>
+{{if .JS}}{{t "Motor JavaScript instalado"}}{{else}}{{t "Motor JavaScript no instalado"}}{{end}}{{if .JSNeed}} · {{t "lo piden:"}} {{range .JSNeed}}{{.name}} {{end}}{{end}}
+· Cloudflare: {{if .Flare}}{{tf "FlareSolverr en %s" .Cfg.FlareSolverr}}{{else}}{{t "sin FlareSolverr"}}{{end}}</p>
 </section>
 
 {{template "import_section" .Import}}
 </div>
 
 <section class="panel" id="ajustes">
-<div class="panel-h"><h2>Ajustes</h2><span class="mut small">Se guardan en la base de datos y mandan sobre las variables de entorno.</span></div>
+<div class="panel-h"><h2>{{t "Ajustes"}}</h2><span class="mut small">{{t "Se guardan en la base de datos y mandan sobre las variables de entorno."}}</span></div>
 {{template "settings_form" .}}
 </section>
 {{end}}
@@ -37,19 +37,19 @@ Motor JavaScript {{if .JS}}instalado{{else}}no instalado{{end}}{{if .JSNeed}} ·
 <form id="settings" class="settings" hx-post="/settings" hx-target="this" hx-swap="outerHTML">
 <div class="sgroups">{{range .Groups}}<fieldset><legend>{{.Name}}</legend>
 {{range .Items}}<label class="field"><span class="fl">{{.Label}} <span class="tip" tabindex="0" data-tip="{{.Help}}">?</span></span>
-{{if .Options}}{{$v := .Value}}<select name="{{.Key}}">{{range .Options}}<option {{if eq . $v}}selected{{end}}>{{.}}</option>{{end}}</select>
-{{else}}<input name="{{.Key}}" value="{{.Value}}" {{if eq .Kind "int"}}type="number" min="0" inputmode="numeric"{{else}}type="text"{{end}}{{if .Custom}} class="custom" title="Cambiado desde la web"{{end}}>{{end}}</label>{{end}}
+{{if .Options}}{{$v := .Value}}<select name="{{.Key}}">{{range .Options}}<option value="{{.}}" {{if eq . $v}}selected{{end}}>{{optlabel .}}</option>{{end}}</select>
+{{else}}<input name="{{.Key}}" value="{{.Value}}" {{if eq .Kind "int"}}type="number" min="0" inputmode="numeric"{{else}}type="text"{{end}}{{if .Custom}} class="custom" title="{{t "Cambiado desde la web"}}"{{end}}>{{end}}</label>{{end}}
 </fieldset>{{end}}</div>
-<div class="row"><button class="pri">{{icon "check"}}Guardar ajustes</button>
+<div class="row"><button class="pri">{{icon "check"}}{{t "Guardar ajustes"}}</button>
 {{if .Msg}}<span class="mut small">{{.Msg}}</span>{{end}}{{range .Errors}}<span class="bad small">{{.}}</span>{{end}}</div>
 </form>
 {{end}}
 
 {{define "opds_panel"}}<div class="opds" hx-target="this" hx-swap="outerHTML">
 <label class="toggle-row"><button class="switch{{if .On}} on{{end}}" hx-post="/system/opds" hx-vals='{"do":"{{if .On}}off{{else}}on{{end}}"}' aria-label="OPDS"></button>
-<span>Leer la biblioteca desde otras apps <span class="tip" tabindex="0" data-tip="OPDS: Panels, Chunky, KOReader, Moon+ Reader, Librera… Las que leen página a página (streaming) marcan aquí lo leído y lo suben a MAL/AniList/MangaDex.">?</span></span></label>
-{{if .On}}<div class="copyrow"><input readonly value="{{.URL}}" onclick="this.select()"><button class="sm" onclick="const i=this.previousElementSibling;i.select();(navigator.clipboard?navigator.clipboard.writeText(i.value):Promise.resolve(document.execCommand('copy'))).then(()=>this.textContent='Copiada')">Copiar</button>
-<button class="ib" hx-post="/system/opds" hx-vals='{"do":"new"}' hx-confirm="¿Generar otra URL? La actual deja de funcionar en las apps donde la tengas." title="Generar otra URL">{{icon "refresh"}}</button></div>
-<p class="mut small">Añádela en la app como catálogo OPDS, sin usuario ni contraseña: la clave va en la URL, no la compartas. Desde fuera de casa, cambia la dirección por la que uses para entrar.</p>{{end}}
-<p class="mut small">Kavita o Komga no usan OPDS: apúntalos a la carpeta de la biblioteca. Los CBZ llevan ComicInfo.xml y cada serie su cover.jpg.</p>
+<span>{{t "Leer la biblioteca desde otras apps"}} <span class="tip" tabindex="0" data-tip="{{t "OPDS: Panels, Chunky, KOReader, Moon+ Reader, Librera… Las que leen página a página (streaming) marcan aquí lo leído y lo suben a MAL/AniList/MangaDex."}}">?</span></span></label>
+{{if .On}}<div class="copyrow"><input readonly value="{{.URL}}" onclick="this.select()"><button class="sm" onclick="const i=this.previousElementSibling;i.select();(navigator.clipboard?navigator.clipboard.writeText(i.value):Promise.resolve(document.execCommand('copy'))).then(()=>this.textContent={{t "Copiada"}})">{{t "Copiar"}}</button>
+<button class="ib" hx-post="/system/opds" hx-vals='{"do":"new"}' hx-confirm="{{t "¿Generar otra URL? La actual deja de funcionar en las apps donde la tengas."}}" title="{{t "Generar otra URL"}}">{{icon "refresh"}}</button></div>
+<p class="mut small">{{t "Añádela en la app como catálogo OPDS, sin usuario ni contraseña: la clave va en la URL, no la compartas. Desde fuera de casa, cambia la dirección por la que uses para entrar."}}</p>{{end}}
+<p class="mut small">{{t "Kavita o Komga no usan OPDS: apúntalos a la carpeta de la biblioteca. Los CBZ llevan ComicInfo.xml y cada serie su cover.jpg."}}</p>
 </div>{{end}}

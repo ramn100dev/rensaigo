@@ -2,6 +2,8 @@
 // aparte de htmx.
 (function () {
   'use strict';
+  // textos: window.I18N (lo pone la plantilla) traduce el español; L('… %s …', x) sustituye cada %s en orden
+  const L = (s, ...a) => { let r = (window.I18N && window.I18N[s]) || s; a.forEach(v => { r = r.replace('%s', v); }); return r; };
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
   const store = {
@@ -31,7 +33,7 @@
   }, true);
   const text = html => { const d = document.createElement('div'); d.innerHTML = html || ''; return d.textContent.trim(); };
   document.addEventListener('htmx:responseError', e => toast(text(e.detail.xhr.responseText) || 'Error ' + e.detail.xhr.status, true));
-  document.addEventListener('htmx:sendError', () => toast('Sin conexión con el servidor', true));
+  document.addEventListener('htmx:sendError', () => toast(L('Sin conexión con el servidor'), true));
 
   // ---------------------------------------------------------------- modal
   const modal = () => $('#modal');
@@ -46,14 +48,14 @@
       // solo al abrirlo desde fuera; lo que se envía desde dentro (guardar, aplicar) no borra el título ni el contenido
       if (e.detail.elt.closest('#modal')) return;
       const src = e.detail.elt.closest('[data-modal]');
-      openModal(src ? src.dataset.modal : '', '<p class="loading">Cargando…</p>');
+      openModal(src ? src.dataset.modal : '', '<p class="loading">' + L('Cargando…') + '</p>');
     }
   });
   document.addEventListener('click', e => {
     if (e.target.closest('[data-close]')) modal().close();
     const add = e.target.closest('[data-open-add]');
     if (add) {
-      openModal('Añadir serie', $('#add-tpl').innerHTML);
+      openModal(L('Añadir serie'), $('#add-tpl').innerHTML);
       htmx.process($('#modal-body'));
       ddEnhance($('#modal-body'));
       const q = $('#modal-body input[name=q]'); if (q) q.focus();
@@ -89,7 +91,7 @@
     if (!b) return;
     e.preventDefault();
     const card = b.closest('.card'), act = b.dataset.act;
-    if (act === 'delete' && !confirm('¿Eliminar «' + b.dataset.title + '»?\n\nSe BORRA también su carpeta con todos los CBZ. No se puede deshacer.')) return;
+    if (act === 'delete' && !confirm(L('¿Eliminar «%s»?\n\nSe BORRA también su carpeta con todos los CBZ. No se puede deshacer.', b.dataset.title))) return;
     b.disabled = true;
     card.classList.add('working');
     htmx.ajax('POST', '/series/' + card.dataset.id + '/' + act, {
@@ -307,15 +309,15 @@
     const go = $('[data-malgo]', box), lbl = $('[data-mallbl]', box), hint = $('[data-malhint]', box);
     if (!go) return;
     const ready = malReady().length, searching = $$('tbody.searching', box).length;
-    if (adding && adding.done >= adding.total) { toast(adding.total === 1 ? 'Serie añadida' : adding.total + ' series añadidas'); adding = null; }
+    if (adding && adding.done >= adding.total) { toast(adding.total === 1 ? L('Serie añadida') : L('%s series añadidas', adding.total)); adding = null; }
     go.classList.toggle('busy', !!adding);
     if (adding) {
-      go.disabled = true; lbl.textContent = 'Añadiendo… ' + adding.done + '/' + adding.total;
+      go.disabled = true; lbl.textContent = L('Añadiendo…') + ' ' + adding.done + '/' + adding.total;
     } else {
-      go.disabled = !ready; lbl.textContent = ready ? 'Añadir ' + ready : 'Añadir';
+      go.disabled = !ready; lbl.textContent = ready ? L('Añadir') + ' ' + ready : L('Añadir');
     }
     const pend = $$('[data-malpick]:checked', box).length - ready - searching;
-    hint.textContent = searching ? 'Buscando ' + searching + '…' : pend > 0 ? pend + ' sin source elegido' : '';
+    hint.textContent = searching ? L('Buscando %s…', searching) : pend > 0 ? L('%s sin source elegido', pend) : '';
   }
   document.addEventListener('change', e => {
     if (e.target.matches('[data-allmal]')) {

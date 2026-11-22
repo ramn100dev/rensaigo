@@ -1,4 +1,9 @@
-# Rensaigo
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/img/logo-dark.svg">
+    <img src="docs/img/logo-light.svg" alt="Rensaigo" height="72">
+  </picture>
+</p>
 
 **[Español](README.es.md)**
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"rensaigo/internal/i18n"
 	"sort"
 	"strings"
 	"sync"
@@ -123,15 +124,15 @@ func (s *Server) computeAlerts() []alert {
 			}
 			if lv := level(since); lv != "" {
 				out = append(out, alert{Key: "src:" + src, Sig: fmt.Sprint(since), Level: lv, at: since, Href: "/sources",
-					Text: fmt.Sprintf("%s no responde en ninguna serie desde hace %s: %s", errs[0].srcName, span(now, since), friendlyErr(fmt.Errorf("%s", errs[0].lastErr)))})
+					Text: i18n.Tf("%s no responde en ninguna serie desde hace %s: %s", errs[0].srcName, span(now, since), friendlyErr(fmt.Errorf("%s", errs[0].lastErr)))})
 			}
 			continue
 		}
 		for _, e := range errs {
 			if lv := level(e.since); lv != "" {
 				out = append(out, alert{Key: fmt.Sprint("ss:", e.ssid), Sig: fmt.Sprint(e.since), Level: lv, at: e.since,
-					Href: fmt.Sprint("/library/", e.sid), Act: "check", ActLabel: "Reintentar",
-					Text: fmt.Sprintf("«%s»: %s falla desde hace %s: %s", e.title, e.srcName, span(now, e.since), friendlyErr(fmt.Errorf("%s", e.lastErr)))})
+					Href: fmt.Sprint("/library/", e.sid), Act: "check", ActLabel: i18n.T("Reintentar"),
+					Text: i18n.Tf("«%s»: %s falla desde hace %s: %s", e.title, e.srcName, span(now, e.since), friendlyErr(fmt.Errorf("%s", e.lastErr)))})
 			}
 		}
 	}
@@ -140,12 +141,12 @@ func (s *Server) computeAlerts() []alert {
 	for _, r := range s.rows(`SELECT c.series_id, se.title, count(*) n, max(c.id) mx, min(c.created) t FROM chapter c
 		JOIN series se ON se.id=c.series_id WHERE c.state='failed' GROUP BY c.series_id`) {
 		n := r["n"].(int64)
-		txt := fmt.Sprintf("«%s»: %d capítulos no se pudieron descargar", r["title"], n)
+		txt := i18n.Tf("«%s»: %d capítulos no se pudieron descargar", r["title"], n)
 		if n == 1 {
-			txt = fmt.Sprintf("«%s»: un capítulo no se pudo descargar", r["title"])
+			txt = i18n.Tf("«%s»: un capítulo no se pudo descargar", r["title"])
 		}
 		out = append(out, alert{Key: fmt.Sprint("fail:", r["series_id"]), Sig: fmt.Sprint(r["mx"], ":", n), Level: "warn",
-			at: r["t"].(int64), Href: fmt.Sprint("/library/", r["series_id"]), Act: "retry", ActLabel: "Reintentar", Text: txt})
+			at: r["t"].(int64), Href: fmt.Sprint("/library/", r["series_id"]), Act: "retry", ActLabel: i18n.T("Reintentar"), Text: txt})
 	}
 
 	// --- series paradas para su ritmo de publicación (semanal, quincenal, mensual), como Rensaio: hace falta un
@@ -195,8 +196,8 @@ func (s *Server) computeAlerts() []alert {
 		}
 		ritmo := map[float64]string{7: "semanal", 15: "quincenal", 30: "mensual"}[cad]
 		out = append(out, alert{Key: fmt.Sprint("stale:", id), Sig: fmt.Sprint(last), Level: lv, at: last,
-			Href: fmt.Sprint("/library/", id), Act: "check", ActLabel: "Comprobar",
-			Text: fmt.Sprintf("«%s» suele salir %s y lleva %s sin capítulos", x.title, map[string]string{"semanal": "cada semana", "quincenal": "cada quince días", "mensual": "cada mes"}[ritmo], span(now, last))})
+			Href: fmt.Sprint("/library/", id), Act: "check", ActLabel: i18n.T("Comprobar"),
+			Text: i18n.Tf("«%s» suele salir %s y lleva %s sin capítulos", x.title, i18n.T(map[string]string{"semanal": "cada semana", "quincenal": "cada quince días", "mensual": "cada mes"}[ritmo]), span(now, last))})
 	}
 	return out
 }
@@ -232,11 +233,11 @@ func span(now time.Time, since int64) string {
 	d := now.Sub(time.Unix(since, 0))
 	switch h := int(d.Hours()); {
 	case h < 48:
-		return fmt.Sprintf("%d horas", h)
+		return i18n.Tf("%d horas", h)
 	case h < 24*60:
-		return fmt.Sprintf("%d días", h/24)
+		return i18n.Tf("%d días", h/24)
 	default:
-		return fmt.Sprintf("%d meses", h/24/30)
+		return i18n.Tf("%d meses", h/24/30)
 	}
 }
 
@@ -263,13 +264,13 @@ func (s *Server) alertAction(w http.ResponseWriter, r *http.Request) {
 				s.Eng.CheckSeries(ctx, sid)
 				s.dropAlertCache()
 			}()
-			setToast(w, "Comprobando…")
+			setToast(w, i18n.T("Comprobando…"))
 		case "retry":
 			var sid int64
 			fmt.Sscanf(a.Href, "/library/%d", &sid)
 			s.St.DB.Exec(`UPDATE chapter SET state='queued', attempts=0, next_try=0, error='' WHERE series_id=? AND state='failed'`, sid)
 			s.Eng.Wake()
-			setToast(w, "Reintentando")
+			setToast(w, i18n.T("Reintentando"))
 		}
 	}
 	s.dropAlertCache()

@@ -9,10 +9,10 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"net/url"
+	"rensaigo/internal/i18n"
 	"strconv"
 	"strings"
 	"sync"
@@ -39,11 +39,11 @@ func NewMAL(st *store.Store) *MAL {
 	return &MAL{kv: kv{st, "mal"}, HTTP: &http.Client{Timeout: 30 * time.Second}, g: gate{every: 500 * time.Millisecond}}
 }
 
-func (c *MAL) Key() string         { return "mal" }
-func (c *MAL) Name() string        { return "MyAnimeList" }
-func (c *MAL) ClientID() string    { return c.get("client_id") }
-func (c *MAL) User() string        { return c.get("user") }
-func (c *MAL) Connected() bool     { return c.get("refresh") != "" }
+func (c *MAL) Key() string      { return "mal" }
+func (c *MAL) Name() string     { return "MyAnimeList" }
+func (c *MAL) ClientID() string { return c.get("client_id") }
+func (c *MAL) User() string     { return c.get("user") }
+func (c *MAL) Connected() bool  { return c.get("refresh") != "" }
 func (c *MAL) Statuses() []Status {
 	return []Status{{"plan_to_read", "Pendientes"}, {"reading", "Leyendo"}, {"on_hold", "En pausa"}}
 }
@@ -129,7 +129,7 @@ func randString(n int) string {
 func (c *MAL) AuthURL(redirect string) (string, error) {
 	id := c.ClientID()
 	if id == "" {
-		return "", errors.New("falta el Client ID de MyAnimeList")
+		return "", i18n.Errorf("falta el Client ID de MyAnimeList")
 	}
 	verifier, state := randString(96), randString(24)
 	c.set("verifier", verifier)
@@ -142,7 +142,7 @@ func (c *MAL) AuthURL(redirect string) (string, error) {
 // Exchange cambia el código de la vuelta de MAL por los tokens y guarda el nombre de usuario.
 func (c *MAL) Exchange(ctx context.Context, code, state, redirect string) error {
 	if state == "" || state != c.get("state") {
-		return errors.New("la respuesta de MyAnimeList no corresponde a este inicio de sesión (state)")
+		return i18n.Errorf("la respuesta de MyAnimeList no corresponde a este inicio de sesión (state)")
 	}
 	f := url.Values{"client_id": {c.ClientID()}, "grant_type": {"authorization_code"}, "code": {code},
 		"code_verifier": {c.get("verifier")}, "redirect_uri": {redirect}}
@@ -178,7 +178,7 @@ func (c *MAL) tokenRequest(ctx context.Context, f url.Values) error {
 		if f.Get("grant_type") == "refresh_token" && (resp.StatusCode == 400 || resp.StatusCode == 401) {
 			return ErrSessionExpired
 		}
-		return fmt.Errorf("MyAnimeList rechazó el token (%d): %s", resp.StatusCode, strings.TrimSpace(string(b)))
+		return i18n.Errorf("MyAnimeList rechazó el token (%d): %s", resp.StatusCode, strings.TrimSpace(string(b)))
 	}
 	var t struct {
 		Access  string `json:"access_token"`
@@ -186,7 +186,7 @@ func (c *MAL) tokenRequest(ctx context.Context, f url.Values) error {
 		Expires int64  `json:"expires_in"`
 	}
 	if err := json.Unmarshal(b, &t); err != nil || t.Access == "" {
-		return errors.New("respuesta de token de MyAnimeList inválida")
+		return i18n.Errorf("respuesta de token de MyAnimeList inválida")
 	}
 	c.set("access", t.Access)
 	c.set("refresh", t.Refresh)
@@ -248,10 +248,10 @@ func (c *MAL) do(ctx context.Context, method, path string, q url.Values, body ur
 	defer resp.Body.Close()
 	b, _ := io.ReadAll(io.LimitReader(resp.Body, 8<<20))
 	if resp.StatusCode == 401 {
-		return errors.New("MyAnimeList ha rechazado la sesión: vuelve a conectar desde Ajustes")
+		return i18n.Errorf("MyAnimeList ha rechazado la sesión: vuelve a conectar desde Ajustes")
 	}
 	if resp.StatusCode/100 != 2 {
-		return fmt.Errorf("MyAnimeList respondió %d: %s", resp.StatusCode, strings.TrimSpace(string(b)))
+		return i18n.Errorf("MyAnimeList respondió %d: %s", resp.StatusCode, strings.TrimSpace(string(b)))
 	}
 	if out != nil {
 		return json.Unmarshal(b, out)

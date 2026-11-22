@@ -5,9 +5,9 @@ package track
 
 import (
 	"context"
-	"errors"
 	"html"
 	"regexp"
+	"rensaigo/internal/i18n"
 	"strings"
 	"sync"
 	"time"
@@ -74,11 +74,11 @@ type OAuth interface {
 	Exchange(ctx context.Context, code, state, redirect string) error
 }
 
-var ErrNotConnected = errors.New("no conectado")
+var ErrNotConnected = i18n.Errorf("no conectado")
 
 // ErrSessionExpired: el servicio ya no acepta la sesión guardada (refresh token caducado o revocado). El cliente se
 // desconecta solo, para que la UI lo diga en vez de fallar en cada sincronización.
-var ErrSessionExpired = errors.New("la sesión ha caducado: vuelve a conectar desde Ajustes → Conexiones")
+var ErrSessionExpired = i18n.Errorf("la sesión ha caducado: vuelve a conectar desde Ajustes → Conexiones")
 
 // gate separa las peticiones a un servicio al menos every (límites de cada API). Lo comparten todas las llamadas del
 // cliente, así que vale igual para un bucle que para peticiones sueltas que coincidan.

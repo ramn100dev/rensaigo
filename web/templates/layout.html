@@ -31,24 +31,24 @@
 </svg>{{end}}
 
 {{define "layout"}}<!doctype html>
-<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>rensaigo</title><link rel="stylesheet" href="/static/app.css?v={{v}}"><script src="/static/htmx.min.js?v={{v}}" defer></script><script src="/static/app.js?v={{v}}" defer></script></head>
+<html lang="{{lang}}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>rensaigo</title><link rel="icon" href="/static/icon.svg" type="image/svg+xml"><link rel="stylesheet" href="/static/app.css?v={{v}}"><script>window.I18N={{jsdict}}</script><script src="/static/htmx.min.js?v={{v}}" defer></script><script src="/static/app.js?v={{v}}" defer></script></head>
 <body>
 {{template "icons"}}
 <header class="top">
 <a class="brand" href="/">rensai<span>go</span></a>
 <nav class="tabs">
-<a href="/library" class="{{if eq .Tab "library"}}on{{end}}">{{icon "book"}}<span>Biblioteca</span></a>
+<a href="/library" class="{{if eq .Tab "library"}}on{{end}}">{{icon "book"}}<span>{{t "Biblioteca"}}</span></a>
 <a href="/sources" class="{{if eq .Tab "sources"}}on{{end}}">{{icon "globe"}}<span>Sources</span></a>
-<a href="/system" class="{{if eq .Tab "system"}}on{{end}}">{{icon "gear"}}<span>Ajustes</span></a>
+<a href="/system" class="{{if eq .Tab "system"}}on{{end}}">{{icon "gear"}}<span>{{t "Ajustes"}}</span></a>
 </nav>
 <div class="tools">
 <div id="hdr" hx-get="/hdr/pill" hx-trigger="load, every 4s, hdrchanged from:body" hx-swap="innerHTML"></div>
-{{if .Auth}}<form method="post" action="/logout"><button class="ib" title="Salir" aria-label="Salir">{{icon "logout"}}</button></form>{{end}}
+{{if .Auth}}<form method="post" action="/logout"><button class="ib" title="{{t "Salir"}}" aria-label="{{t "Salir"}}">{{icon "logout"}}</button></form>{{end}}
 </div>
 </header>
-<div id="pop-queue" class="pop" hidden><div class="pop-h"><b>Descargas</b></div><div class="pop-b" hx-get="/hdr/queue" hx-trigger="pop-open, every 3s [!this.closest('.pop').hidden]"></div></div>
-<div id="pop-events" class="pop" hidden><div class="pop-h"><b>Actividad</b></div><div class="pop-b" hx-get="/hdr/events" hx-trigger="pop-open"></div></div>
+<div id="pop-queue" class="pop" hidden><div class="pop-h"><b>{{t "Descargas"}}</b></div><div class="pop-b" hx-get="/hdr/queue" hx-trigger="pop-open, every 3s [!this.closest('.pop').hidden]"></div></div>
+<div id="pop-events" class="pop" hidden><div class="pop-h"><b>{{t "Actividad"}}</b></div><div class="pop-b" hx-get="/hdr/events" hx-trigger="pop-open"></div></div>
 
 <main class="{{.Body}}">
 {{if eq .Body "library"}}{{template "library" .}}
@@ -57,37 +57,37 @@
 {{else if eq .Body "system"}}{{template "system" .}}{{end}}
 </main>
 
-<dialog id="modal"><div class="modal-h"><b id="modal-title"></b><button class="ib" data-close aria-label="Cerrar">{{icon "x"}}</button></div><div id="modal-body"></div></dialog>
+<dialog id="modal"><div class="modal-h"><b id="modal-title"></b><button class="ib" data-close aria-label="{{t "Cerrar"}}">{{icon "x"}}</button></div><div id="modal-body"></div></dialog>
 <div id="toasts" aria-live="polite"></div>
 </body></html>{{end}}
 
 {{define "hdr_pill"}}
-<button class="pill{{if .Active}} busy{{end}}{{if .Paused}} paused{{end}}" data-pop="pop-queue" title="{{if .Paused}}Descargas en pausa · {{end}}Descargando ahora: {{.Active}} capítulo{{if ne .Active 1}}s{{end}} · en cola: {{.Queued}} capítulo{{if ne .Queued 1}}s{{end}}{{if .QSeries}} de {{.QSeries}} serie{{if ne .QSeries 1}}s{{end}}{{end}}{{if .Failed}} · fallidos: {{.Failed}}{{end}}">
+<button class="pill{{if .Active}} busy{{end}}{{if .Paused}} paused{{end}}" data-pop="pop-queue" title="{{if .Paused}}{{t "Descargas en pausa"}} · {{end}}{{t "Descargando ahora:"}} {{tn .Active "%d capítulo" "%d capítulos"}} · {{t "en cola:"}} {{tn .Queued "%d capítulo" "%d capítulos"}}{{if .QSeries}} {{tn .QSeries "de %d serie" "de %d series"}}{{end}}{{if .Failed}} · {{t "fallidos:"}} {{.Failed}}{{end}}">
 {{if .Paused}}{{icon "pause"}}{{else}}{{icon "download"}}{{end}}<b>{{.Active}}</b><span class="sep"></span><span>{{.Queued}}</span>{{if .Failed}}<span class="sep"></span><span class="bad">{{icon "alert"}}{{.Failed}}</span>{{end}}
 </button>
-<button class="ib bell" data-pop="pop-events" title="Actividad reciente" aria-label="Actividad reciente">{{icon "bell"}}{{if .Unread}}<i class="dot{{if eq .Level "warn"}} warn{{end}}">{{if lt .Unread 100}}{{.Unread}}{{else}}99+{{end}}</i>{{end}}</button>
+<button class="ib bell" data-pop="pop-events" title="{{t "Actividad reciente"}}" aria-label="{{t "Actividad reciente"}}">{{icon "bell"}}{{if .Unread}}<i class="dot{{if eq .Level "warn"}} warn{{end}}">{{if lt .Unread 100}}{{.Unread}}{{else}}99+{{end}}</i>{{end}}</button>
 {{end}}
 
 {{define "hdr_queue"}}
-<div class="qpause{{if .Paused}} on{{end}}"><span class="small">{{if .Paused}}<b>En pausa</b>{{else}}Descargas activas{{end}}</span>
-<button class="sm" hx-post="/downloads/pause" hx-target="closest .pop-b" title="{{if .Paused}}Seguir descargando lo que está en cola{{else}}Termina lo que está bajando y no empieza nada más. Los capítulos nuevos se siguen buscando y se ponen en cola{{end}}">{{if .Paused}}{{icon "play"}}Reanudar{{else}}{{icon "pause"}}Pausar todo{{end}}</button></div>
+<div class="qpause{{if .Paused}} on{{end}}"><span class="small">{{if .Paused}}<b>{{t "En pausa"}}</b>{{else}}{{t "Descargas activas"}}{{end}}</span>
+<button class="sm" hx-post="/downloads/pause" hx-target="closest .pop-b" title="{{if .Paused}}{{t "Seguir descargando lo que está en cola"}}{{else}}{{t "Termina lo que está bajando y no empieza nada más. Los capítulos nuevos se siguen buscando y se ponen en cola"}}{{end}}">{{if .Paused}}{{icon "play"}}{{t "Reanudar"}}{{else}}{{icon "pause"}}{{t "Pausar todo"}}{{end}}</button></div>
 {{if .Snap.Active}}<ul class="qlist">{{range .Snap.Active}}<li><div class="row-sb"><b class="ell">{{.Series}}</b><span class="mut small nowrap">{{.Done}}/{{.Total}}</span></div>
 <div class="mut small ell">{{.Chapter}} · {{.Source}}</div><div class="bar"><i style="width:{{pct .Done .Total}}%"></i></div></li>{{end}}</ul>
-{{else}}<p class="empty">Nada descargándose ahora.</p>{{end}}
-<p class="pop-f mut small">{{index .Snap.Counts "queued"}} capítulos en cola{{if .Snap.QueuedSeries}} de {{.Snap.QueuedSeries}} series{{end}} · {{index .Snap.Counts "failed"}} fallidos · host {{if .Host.Running}}en marcha ({{kmb .Host.RSSKb}}){{else}}apagado{{end}}</p>
+{{else}}<p class="empty">{{t "Nada descargándose ahora."}}</p>{{end}}
+<p class="pop-f mut small">{{tf "%d capítulos en cola" (index .Snap.Counts "queued")}}{{if .Snap.QueuedSeries}} {{tn .Snap.QueuedSeries "de %d serie" "de %d series"}}{{end}} · {{tf "%d fallidos" (index .Snap.Counts "failed")}} · {{if .Host.Running}}{{tf "host en marcha (%s)" (kmb .Host.RSSKb)}}{{else}}{{t "host apagado"}}{{end}}</p>
 {{end}}
 
 {{define "hdr_events"}}
 {{if .Alerts}}<ul class="alist">{{range .Alerts}}<li class="lv-{{.Level}}"><span>{{.Text}}</span>
 <div class="aacts">{{if .Act}}<button class="sm" hx-post="/alerts/{{.Act}}" hx-vals='{"k":"{{.Key}}"}' hx-target="closest .pop-b">{{.ActLabel}}</button>{{end}}
-<a class="btn sm" href="{{.Href}}">Ver</a></div>
-<button class="ib adis" hx-post="/alerts/dismiss" hx-vals='{"k":"{{.Key}}"}' hx-target="closest .pop-b" title="Descartar: no vuelve a salir mientras no cambie" aria-label="Descartar">{{icon "x"}}</button></li>{{end}}</ul>{{end}}
+<a class="btn sm" href="{{.Href}}">{{t "Ver"}}</a></div>
+<button class="ib adis" hx-post="/alerts/dismiss" hx-vals='{"k":"{{.Key}}"}' hx-target="closest .pop-b" title="{{t "Descartar: no vuelve a salir mientras no cambie"}}" aria-label="{{t "Descartar"}}">{{icon "x"}}</button></li>{{end}}</ul>{{end}}
 {{if .Events}}<ul class="elist">{{range .Events}}<li{{if .new}} class="new"{{end}}><span class="k">{{.kind}}</span><span>{{.msg}}</span><time>{{ago .at}}</time></li>{{end}}</ul>
-{{else}}<p class="empty">Sin actividad todavía.</p>{{end}}
+{{else}}<p class="empty">{{t "Sin actividad todavía."}}</p>{{end}}
 {{end}}
 
-{{define "login"}}<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>rensaigo</title><link rel="stylesheet" href="/static/app.css?v={{v}}"></head><body class="login">
+{{define "login"}}<!doctype html><html lang="{{lang}}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>rensaigo</title><link rel="icon" href="/static/icon.svg" type="image/svg+xml"><link rel="stylesheet" href="/static/app.css?v={{v}}"></head><body class="login">
 <form method="post" action="/login" class="login-box"><span class="brand">rensai<span>go</span></span>
-<input type="password" name="password" placeholder="Contraseña" aria-label="Contraseña" autofocus required>
-<button class="pri">Entrar</button>{{if .Error}}<p class="err">{{.Error}}</p>{{end}}</form></body></html>{{end}}
+<input type="password" name="password" placeholder="{{t "Contraseña"}}" aria-label="{{t "Contraseña"}}" autofocus required>
+<button class="pri">{{t "Entrar"}}</button>{{if .Error}}<p class="err">{{.Error}}</p>{{end}}</form></body></html>{{end}}

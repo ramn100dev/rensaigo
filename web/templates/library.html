@@ -1,29 +1,29 @@
 {{define "library"}}
 <div class="filters" id="filters">
-<label class="fsel"><span>Rastreo</span><select data-f="track"><option value="">Todas</option><option value="active" data-sq="active">Activo</option><option value="paused" data-sq="paused">Pausado</option><option value="unassigned" data-sq="unassigned">Sin asignar</option><option value="complete" data-sq="complete">Completo</option></select></label>
-<label class="fsel"><span>Lectura</span><select data-f="reading"><option value="">Todos</option><option value="reading">Leyendo</option><option value="fav">Favoritos</option><option value="read">Leídos</option></select></label>
-<label class="fsel"><span>Género</span><select data-f="genre"><option value="">Todos</option>{{range .Genres}}<option>{{.}}</option>{{end}}</select></label>
-<label class="fsel"><span>Source</span><select data-f="src"><option value="">Todos</option>{{range .SourceNames}}<option>{{.}}</option>{{end}}</select></label>
-<button class="pri add" data-open-add>{{icon "plus"}}Añadir</button>
+<label class="fsel"><span>{{t "Rastreo"}}</span><select data-f="track"><option value="">{{t "Todas"}}</option><option value="active" data-sq="active">{{t "Activo"}}</option><option value="paused" data-sq="paused">{{t "Pausado"}}</option><option value="unassigned" data-sq="unassigned">{{t "Sin asignar"}}</option><option value="complete" data-sq="complete">{{t "Completo"}}</option></select></label>
+<label class="fsel"><span>{{t "Lectura"}}</span><select data-f="reading"><option value="">{{t "Todos"}}</option><option value="reading">{{t "Leyendo"}}</option><option value="fav">{{t "Favoritos"}}</option><option value="read">{{t "Leídos"}}</option></select></label>
+<label class="fsel"><span>{{t "Género"}}</span><select data-f="genre"><option value="">{{t "Todos"}}</option>{{range .Genres}}<option>{{.}}</option>{{end}}</select></label>
+<label class="fsel"><span>Source</span><select data-f="src"><option value="">{{t "Todos"}}</option>{{range .SourceNames}}<option>{{.}}</option>{{end}}</select></label>
+<button class="pri add" data-open-add>{{icon "plus"}}{{t "Añadir"}}</button>
 </div>
 
-{{if not .Series}}<div class="blank"><h2>La biblioteca está vacía</h2><p class="mut">Añade una serie desde un source o copia tu biblioteca en la carpeta de datos: se adopta sola al entrar aquí.</p></div>{{end}}
+{{if not .Series}}<div class="blank"><h2>{{t "La biblioteca está vacía"}}</h2><p class="mut">{{t "Añade una serie desde un source o copia tu biblioteca en la carpeta de datos: se adopta sola al entrar aquí."}}</p></div>{{end}}
 <div class="grid" id="grid">{{range .Series}}{{template "card" .}}{{end}}</div>
-<p class="blank mut" id="nomatch" hidden>Ninguna serie coincide con los filtros.</p>
+<p class="blank mut" id="nomatch" hidden>{{t "Ninguna serie coincide con los filtros."}}</p>
 
 <template id="add-tpl">
-{{if .TrkOn}}<div class="seg2" role="tablist"><button type="button" class="on" data-tab="add-search">Buscar en los sources</button><button type="button" data-tab="add-mal" hx-get="/track/list" hx-target="#add-mal" hx-trigger="click once">Mis listas</button></div>{{end}}
+{{if .TrkOn}}<div class="seg2" role="tablist"><button type="button" class="on" data-tab="add-search">{{t "Buscar en los sources"}}</button><button type="button" data-tab="add-mal" hx-get="/track/list" hx-target="#add-mal" hx-trigger="click once">{{t "Mis listas"}}</button></div>{{end}}
 <div id="add-search" class="tabpane">
-{{if not .Sources}}<p class="mut">No hay sources activos. Instala alguno en <a href="/sources">Sources</a>.</p>{{else}}
+{{if not .Sources}}<p class="mut">{{t "No hay sources activos. Instala alguno en"}} <a href="/sources">Sources</a>.</p>{{else}}
 <form class="searchbar" hx-get="/series/search" hx-target="#add-results" hx-indicator="#add-spin">
-<select name="source" aria-label="Source"><option value="all">Todos los sources</option>{{range .Sources}}<option value="{{.id}}">{{.name}} ({{.lang}})</option>{{end}}</select>
-<input type="search" name="q" placeholder="Título (vacío = populares)" aria-label="Título" autofocus>
-{{if gt (len .Cats) 1}}<label class="fsel" title="Carpeta de la biblioteca donde se guardará"><span>Carpeta</span><select name="category" aria-label="Carpeta">{{$c := .Cat}}{{range .Cats}}<option {{if eq . $c}}selected{{end}}>{{.}}</option>{{end}}</select></label>
+<select name="source" aria-label="Source"><option value="all">{{t "Todos los sources"}}</option>{{range .Sources}}<option value="{{.id}}">{{.name}} ({{.lang}})</option>{{end}}</select>
+<input type="search" name="q" placeholder="{{t "Título (vacío = populares)"}}" aria-label="{{t "Título"}}" autofocus>
+{{if gt (len .Cats) 1}}<label class="fsel" title="{{t "Carpeta de la biblioteca donde se guardará"}}"><span>{{t "Carpeta"}}</span><select name="category" aria-label="{{t "Carpeta"}}">{{$c := .Cat}}{{range .Cats}}<option {{if eq . $c}}selected{{end}}>{{.}}</option>{{end}}</select></label>
 {{else}}<input type="hidden" name="category" value="{{.Cat}}">{{end}}
-<button class="pri">{{icon "search"}}Buscar</button>
-</form><p id="add-spin" class="htmx-indicator mut small">Buscando en los sources…</p><div id="add-results"></div>{{end}}
+<button class="pri">{{icon "search"}}{{t "Buscar"}}</button>
+</form><p id="add-spin" class="htmx-indicator mut small">{{t "Buscando en los sources…"}}</p><div id="add-results"></div>{{end}}
 </div>
-{{if .TrkOn}}<div id="add-mal" class="tabpane" hidden><p class="loading">Cargando tu lista…</p></div>{{end}}
+{{if .TrkOn}}<div id="add-mal" class="tabpane" hidden><p class="loading">{{t "Cargando tu lista…"}}</p></div>{{end}}
 </template>
 {{end}}
 
@@ -32,26 +32,26 @@
 {{define "card"}}<article class="card t-{{.track}}" data-id="{{.id}}"{{if .pending}} data-busy{{end}} data-track="{{.track}}" data-reading="{{.reading}}" data-fav="{{.favorite}}" data-genres="|{{.genres}}|" data-srcs="|{{.srcnames}}|">
 <a class="cover" href="/library/{{.id}}" title="{{.track_label}}{{if .pub_label}} · {{.pub_label}}{{end}}"><img loading="lazy" src="/thumb/{{.id}}" alt="">
 <span class="cap"><span class="ttl">{{.title}}</span>{{if .author}}<span class="au">{{.author}}</span>{{end}}</span>
-{{if or .failed .pending}}<span class="flags">{{if .failed}}<span class="fl-bad" title="{{.failed}} capítulos fallidos">{{icon "alert"}}{{.failed}}</span>{{end}}{{if .pending}}<span title="{{.pending}} en cola">{{icon "download"}}{{.pending}}</span>{{end}}</span>{{end}}</a>
-<button class="fav{{if .favorite}} on{{end}}" data-act="fav" title="{{if .favorite}}Quitar de favoritos{{else}}Destacar{{end}}" aria-pressed="{{if .favorite}}true{{else}}false{{end}}">{{icon "star"}}</button>
-<div class="prog" title="{{if .cur}}Capítulo {{.cur_num}}{{if eq .reading "read"}} · leído{{else if .cur_pct}} · {{.cur_pct}} % leído{{end}} · {{.downloaded}} de {{.total}} en disco{{else}}Sin capítulos en disco{{end}}">
+{{if or .failed .pending}}<span class="flags">{{if .failed}}<span class="fl-bad" title="{{tf "%d capítulos fallidos" .failed}}">{{icon "alert"}}{{.failed}}</span>{{end}}{{if .pending}}<span title="{{tf "%d en cola" .pending}}">{{icon "download"}}{{.pending}}</span>{{end}}</span>{{end}}</a>
+<button class="fav{{if .favorite}} on{{end}}" data-act="fav" title="{{if .favorite}}{{t "Quitar de favoritos"}}{{else}}{{t "Destacar"}}{{end}}" aria-pressed="{{if .favorite}}true{{else}}false{{end}}">{{icon "star"}}</button>
+<div class="prog" title="{{if .cur}}{{t "Capítulo"}} {{.cur_num}}{{if eq .reading "read"}} · {{t "leído"}}{{else if .cur_pct}} · {{tf "%d %% leído" .cur_pct}}{{end}} · {{tf "%d de %d en disco" .downloaded .total}}{{else}}{{t "Sin capítulos en disco"}}{{end}}">
 {{if .cur}}<span class="idx"><b>{{.cur_idx}}</b>/{{.total}}</span><span class="line"><i style="--p:{{.cur_pos}}%"></i></span>
 {{else}}<span class="idx mut">—</span><span class="line"></span>{{end}}
 </div>
 <div class="acts">
-{{if eq .track "unassigned"}}<a class="ib" href="/system#importar" title="Sin source: emparejar">{{icon "link"}}</a>
-{{else if .paused}}<button class="ib warn" data-act="resume" title="Reanudar rastreo">{{icon "play"}}</button>
-{{else}}<button class="ib" data-act="pause" title="Pausar rastreo">{{icon "pause"}}</button>{{end}}
-<button class="ib" data-act="verify" title="Verificar archivos en disco">{{icon "verify"}}</button>
-<button class="ib" data-act="check" title="Refrescar: buscar capítulos nuevos" {{if eq .track "unassigned"}}disabled{{end}}>{{icon "refresh"}}</button>
-<button class="ib danger" data-act="delete" data-title="{{.title}}" title="Eliminar serie y archivos">{{icon "trash"}}</button>
+{{if eq .track "unassigned"}}<a class="ib" href="/system#importar" title="{{t "Sin source: emparejar"}}">{{icon "link"}}</a>
+{{else if .paused}}<button class="ib warn" data-act="resume" title="{{t "Reanudar rastreo"}}">{{icon "play"}}</button>
+{{else}}<button class="ib" data-act="pause" title="{{t "Pausar rastreo"}}">{{icon "pause"}}</button>{{end}}
+<button class="ib" data-act="verify" title="{{t "Verificar archivos en disco"}}">{{icon "verify"}}</button>
+<button class="ib" data-act="check" title="{{t "Refrescar: buscar capítulos nuevos"}}" {{if eq .track "unassigned"}}disabled{{end}}>{{icon "refresh"}}</button>
+<button class="ib danger" data-act="delete" data-title="{{.title}}" title="{{t "Eliminar serie y archivos"}}">{{icon "trash"}}</button>
 </div>
 </article>{{end}}
 
 {{define "library_series"}}
 <div class="split">
 <section class="side">
-<a class="back small" href="/library">← Biblioteca</a>
+<a class="back small" href="/library">← {{t "Biblioteca"}}</a>
 <div class="ficha t-{{.S.track}}">
 <img class="fcover" src="/thumb/{{.S.id}}" alt="">
 <div>
@@ -59,51 +59,51 @@
 <p class="chips">
 <span class="chip st">{{.S.track_label}}</span>
 {{if .S.pub_label}}<span class="chip">{{.S.pub_label}}</span>{{end}}
-{{if .S.favorite}}<span class="chip">{{icon "star"}}Favorito</span>{{end}}
+{{if .S.favorite}}<span class="chip">{{icon "star"}}{{t "Favorito"}}</span>{{end}}
 </p>
 <dl class="kv">
-{{if .S.author}}<dt>Autor</dt><dd>{{.S.author}}{{if and .S.artist (ne .S.artist .S.author)}} · {{.S.artist}}{{end}}</dd>{{end}}
-<dt>Capítulos</dt><dd>{{.S.downloaded}} en disco de {{.S.total}} · {{.S.read}} leídos</dd>
-<dt>Carpeta</dt><dd class="ell" title="{{.S.path}}">{{.S.category}}</dd>
+{{if .S.author}}<dt>{{t "Autor"}}</dt><dd>{{.S.author}}{{if and .S.artist (ne .S.artist .S.author)}} · {{.S.artist}}{{end}}</dd>{{end}}
+<dt>{{t "Capítulos"}}</dt><dd>{{tf "%d en disco de %d" .S.downloaded .S.total}} · {{tf "%d leídos" .S.read}}</dd>
+<dt>{{t "Carpeta"}}</dt><dd class="ell" title="{{.S.path}}">{{.S.category}}</dd>
 </dl>
-<p class="row">{{if .Next}}<a class="btn pri" href="/read/{{.Next.id}}">{{icon "book"}}{{if .Next.page}}Continuar{{else}}Leer{{end}} cap. {{num .Next.number}}</a>{{end}}
-<button class="ib{{if .S.favorite}} on-star{{end}}" hx-post="/series/{{.S.id}}/fav" title="Destacar">{{icon "star"}}</button></p>
+<p class="row">{{if .Next}}<a class="btn pri" href="/read/{{.Next.id}}">{{icon "book"}}{{if .Next.page}}{{t "Continuar"}}{{else}}{{t "Leer"}}{{end}} {{t "cap."}} {{num .Next.number}}</a>{{end}}
+<button class="ib{{if .S.favorite}} on-star{{end}}" hx-post="/series/{{.S.id}}/fav" title="{{t "Destacar"}}">{{icon "star"}}</button></p>
 </div>
 </div>
 {{if .S.genre_list}}<p class="tags">{{range .S.genre_list}}<span>{{.}}</span>{{end}}</p>{{end}}
-{{if .S.description}}<p class="desc clamp" data-clamp title="Clic para ver entera">{{.S.description}}</p>{{end}}
+{{if .S.description}}<p class="desc clamp" data-clamp title="{{t "Clic para ver entera"}}">{{.S.description}}</p>{{end}}
 
-<h2>Rastreo y descarga</h2>
+<h2>{{t "Rastreo y descarga"}}</h2>
 <div class="actions">
-{{if .S.paused}}<button class="act warn" hx-post="/series/{{.S.id}}/resume">{{icon "play"}}<span>Reanudar</span></button>{{else}}<button class="act" hx-post="/series/{{.S.id}}/pause">{{icon "pause"}}<span>Pausar</span></button>{{end}}
-<button class="act" hx-post="/series/{{.S.id}}/check" hx-indicator="this" {{if not .SeriesSources}}disabled{{end}}>{{icon "refresh"}}<span>Refrescar</span></button>
-<button class="act" hx-post="/series/{{.S.id}}/verify" hx-indicator="this">{{icon "verify"}}<span>Verificar disco</span></button>
-<button class="act" hx-post="/series/{{.S.id}}/queue" {{if not .SeriesSources}}disabled{{end}}>{{icon "download"}}<span>Bajar pendientes</span></button>
-<button class="act" hx-post="/series/{{.S.id}}/retry-failed" {{if not .S.failed}}disabled{{end}}>{{icon "retry"}}<span>Reintentar fallidos</span></button>
-<button class="act danger" hx-post="/series/{{.S.id}}/delete" hx-confirm="¿Eliminar «{{.S.title}}»? Se BORRA también su carpeta con todos los CBZ.">{{icon "trash"}}<span>Eliminar</span></button>
+{{if .S.paused}}<button class="act warn" hx-post="/series/{{.S.id}}/resume">{{icon "play"}}<span>{{t "Reanudar"}}</span></button>{{else}}<button class="act" hx-post="/series/{{.S.id}}/pause">{{icon "pause"}}<span>{{t "Pausar"}}</span></button>{{end}}
+<button class="act" hx-post="/series/{{.S.id}}/check" hx-indicator="this" {{if not .SeriesSources}}disabled{{end}}>{{icon "refresh"}}<span>{{t "Refrescar"}}</span></button>
+<button class="act" hx-post="/series/{{.S.id}}/verify" hx-indicator="this">{{icon "verify"}}<span>{{t "Verificar disco"}}</span></button>
+<button class="act" hx-post="/series/{{.S.id}}/queue" {{if not .SeriesSources}}disabled{{end}}>{{icon "download"}}<span>{{t "Bajar pendientes"}}</span></button>
+<button class="act" hx-post="/series/{{.S.id}}/retry-failed" {{if not .S.failed}}disabled{{end}}>{{icon "retry"}}<span>{{t "Reintentar fallidos"}}</span></button>
+<button class="act danger" hx-post="/series/{{.S.id}}/delete" hx-confirm="{{tf "¿Eliminar «%s»? Se BORRA también su carpeta con todos los CBZ." .S.title}}">{{icon "trash"}}<span>{{t "Eliminar"}}</span></button>
 </div>
-<label class="toggle-row"><button class="switch{{if .S.auto_download}} on{{end}}" hx-post="/series/{{.S.id}}/auto" aria-label="Descarga automática"></button>
-<span>Descargar automáticamente los capítulos nuevos</span></label>
-<p class="mut small">Última comprobación {{ago .S.last_check}}{{if .S.last_error}} · <span class="bad">{{.S.last_error}}</span>{{end}}</p>
+<label class="toggle-row"><button class="switch{{if .S.auto_download}} on{{end}}" hx-post="/series/{{.S.id}}/auto" aria-label="{{t "Descarga automática"}}"></button>
+<span>{{t "Descargar automáticamente los capítulos nuevos"}}</span></label>
+<p class="mut small">{{t "Última comprobación"}} {{ago .S.last_check}}{{if .S.last_error}} · <span class="bad">{{.S.last_error}}</span>{{end}}</p>
 
-<h2>Sources <span class="tip" tabindex="0" data-tip="Arrastra para ordenar. El primero es el principal: los demás solo rellenan los capítulos que le falten, y cuando el principal los saca se descargan de él y sustituyen a los otros (mientras tanto puedes leer los que hay).">?</span></h2>
+<h2>Sources <span class="tip" tabindex="0" data-tip="{{t "Arrastra para ordenar. El primero es el principal: los demás solo rellenan los capítulos que le falten, y cuando el principal los saca se descargan de él y sustituyen a los otros (mientras tanto puedes leer los que hay)."}}">?</span></h2>
 <ul class="srclist" id="srclist" data-sort="/series/{{.S.id}}/order">
 {{range .SeriesSources}}<li data-ss="{{.id}}">
-<span class="grip" title="Arrastrar">{{icon "grip"}}</span>
+<span class="grip" title="{{t "Arrastrar"}}">{{icon "grip"}}</span>
 <img class="ico" src="/icon/{{.pkg}}" alt="" onerror="this.style.visibility='hidden'">
-<div class="grow"><b>{{.name}}</b> <span class="mut small">{{.lang}}{{if not .enabled}} · desactivado{{end}}</span> <span class="chip prin">principal</span>
-<div class="small {{if .last_error}}bad{{else}}mut{{end}} ell" title="{{.last_error}}">{{if .last_error}}{{.last_error}}{{else}}<span class="dot s-{{.status}}" title="{{label .status}}"></span>{{ago .last_check}}{{if .width}}<span title="Ancho de página de lo descargado de aquí"> · {{.width}} px</span>{{else}}<span hx-get="/series/{{$.S.id}}/sswidth?ss={{.id}}" hx-trigger="load" hx-target="this" hx-swap="outerHTML"></span>{{end}}{{end}}</div></div>
-<label class="fromch small" title="Solo capítulos desde este número. Vacío: todos">desde <input type="number" name="from" min="0" step="any" value="{{if .from_ch}}{{num .from_ch}}{{end}}" placeholder="1" hx-post="/series/{{$.S.id}}/from" hx-vals='{"ss":"{{.id}}"}' hx-trigger="change"></label>
-<button class="ib danger" hx-post="/series/{{$.S.id}}/unsource" hx-vals='{"ss":"{{.id}}"}' hx-confirm="¿Quitar este source de la serie?" title="Quitar source">{{icon "x"}}</button>
-</li>{{else}}<li class="mut">Sin sources: añade uno para empezar a rastrearla.</li>{{end}}
+<div class="grow"><b>{{.name}}</b> <span class="mut small">{{.lang}}{{if not .enabled}} · {{t "desactivado"}}{{end}}</span> <span class="chip prin">{{t "principal"}}</span>
+<div class="small {{if .last_error}}bad{{else}}mut{{end}} ell" title="{{.last_error}}">{{if .last_error}}{{.last_error}}{{else}}<span class="dot s-{{.status}}" title="{{label .status}}"></span>{{ago .last_check}}{{if .width}}<span title="{{t "Ancho de página de lo descargado de aquí"}}"> · {{.width}} px</span>{{else}}<span hx-get="/series/{{$.S.id}}/sswidth?ss={{.id}}" hx-trigger="load" hx-target="this" hx-swap="outerHTML"></span>{{end}}{{end}}</div></div>
+<label class="fromch small" title="{{t "Solo capítulos desde este número. Vacío: todos"}}">{{t "desde"}} <input type="number" name="from" min="0" step="any" value="{{if .from_ch}}{{num .from_ch}}{{end}}" placeholder="1" hx-post="/series/{{$.S.id}}/from" hx-vals='{"ss":"{{.id}}"}' hx-trigger="change"></label>
+<button class="ib danger" hx-post="/series/{{$.S.id}}/unsource" hx-vals='{"ss":"{{.id}}"}' hx-confirm="{{t "¿Quitar este source de la serie?"}}" title="{{t "Quitar source"}}">{{icon "x"}}</button>
+</li>{{else}}<li class="mut">{{t "Sin sources: añade uno para empezar a rastrearla."}}</li>{{end}}
 </ul>
 <div id="src-cands"></div>
-<button class="act" hx-get="/series/{{.S.id}}/candidates" hx-target="#src-cands" hx-indicator="this" hx-disabled-elt="this">{{icon "plus"}}<span>Añadir source</span></button>
-{{if .Trk}}<h2>Seguimiento</h2><div class="trks">{{range .Trk}}{{template "track_box" .}}{{end}}</div>{{end}}
+<button class="act" hx-get="/series/{{.S.id}}/candidates" hx-target="#src-cands" hx-indicator="this" hx-disabled-elt="this">{{icon "plus"}}<span>{{t "Añadir source"}}</span></button>
+{{if .Trk}}<h2>{{t "Seguimiento"}}</h2><div class="trks">{{range .Trk}}{{template "track_box" .}}{{end}}</div>{{end}}
 </section>
 
 <section class="chapters">
-<div class="chap-h"><h2>Capítulos</h2><span class="mut small">{{len .Chapters}}</span></div>
+<div class="chap-h"><h2>{{t "Capítulos"}}</h2><span class="mut small">{{len .Chapters}}</span></div>
 <div id="chapters" hx-get="/series/{{.S.id}}/chapters" hx-trigger="every 5s" hx-swap="innerHTML">{{template "chapter_rows" .}}</div>
 </section>
 </div>
@@ -112,34 +112,34 @@
 {{define "src_cands"}}{{$id := .ID}}<div class="srccands">
 {{range .Cands}}{{$c := .C}}<form class="scand" hx-post="/series/follow" hx-disabled-elt="find button">
 <img class="ico" src="/icon/{{.Pkg}}" alt="" onerror="this.style.visibility='hidden'">
-<div class="grow"><div class="ell"><b>{{$c.SourceName}}</b> <span class="mut small">{{.Lang}}{{if not .Same}} · <span title="Lo tiene como «{{$c.Title}}»">{{$c.Title}}</span>{{end}}</span></div>
-<div class="small mut ell" hx-get="/series/{{$id}}/candstat" hx-include="closest form" hx-trigger="load" hx-target="this" hx-swap="outerHTML" hx-disabled-elt="unset"><span class="spin"></span>mirando…</div></div>
+<div class="grow"><div class="ell"><b>{{$c.SourceName}}</b> <span class="mut small">{{.Lang}}{{if not .Same}} · <span title="{{tf "Lo tiene como «%s»" $c.Title}}">{{$c.Title}}</span>{{end}}</span></div>
+<div class="small mut ell" hx-get="/series/{{$id}}/candstat" hx-include="closest form" hx-trigger="load" hx-target="this" hx-swap="outerHTML" hx-disabled-elt="unset"><span class="spin"></span>{{t "mirando…"}}</div></div>
 <input type="hidden" name="source" value="{{$c.Source}}"><input type="hidden" name="url" value="{{$c.URL}}">
 <input type="hidden" name="title" value="{{$c.Title}}"><input type="hidden" name="memo" value="{{$c.MemoS}}"><input type="hidden" name="add_to" value="{{$id}}">
-<button class="pri sm"><span class="lbl">{{icon "plus"}}Añadir</span><span class="busy">{{icon "refresh"}}</span></button>
-</form>{{else}}<p class="mut small">No aparece en ningún otro source activo.</p>{{end}}
-{{if .Fails}}<p class="mut small">Sin respuesta: {{.Fails}}</p>{{end}}
+<button class="pri sm"><span class="lbl">{{icon "plus"}}{{t "Añadir"}}</span><span class="busy">{{icon "refresh"}}</span></button>
+</form>{{else}}<p class="mut small">{{t "No aparece en ningún otro source activo."}}</p>{{end}}
+{{if .Fails}}<p class="mut small">{{t "Sin respuesta:"}} {{.Fails}}</p>{{end}}
 </div>{{end}}
 
-{{define "cand_stat"}}<div class="small mut ell" title="{{if .Err}}{{.Err}}{{else}}{{.Chapters}} capítulos, el último es el {{num .Last}}{{if .Mine}} (tú tienes hasta el {{num .Mine}}){{end}}{{if .Width}} · páginas de {{.Width}} px de ancho{{end}}{{end}}"><span class="dot c-{{.Lvl}}"></span>{{if .Err}}no responde{{else if not .Chapters}}sin capítulos{{else}}hasta el {{num .Last}}{{if .Width}} · {{.Width}} px{{end}}{{end}}</div>{{end}}
+{{define "cand_stat"}}<div class="small mut ell" title="{{if .Err}}{{.Err}}{{else}}{{tf "%d capítulos, el último es el %s" .Chapters (num .Last)}}{{if .Mine}} {{tf "(tú tienes hasta el %s)" (num .Mine)}}{{end}}{{if .Width}} · {{tf "páginas de %d px de ancho" .Width}}{{end}}{{end}}"><span class="dot c-{{.Lvl}}"></span>{{if .Err}}{{t "no responde"}}{{else if not .Chapters}}{{t "sin capítulos"}}{{else}}{{tf "hasta el %s" (num .Last)}}{{if .Width}} · {{.Width}} px{{end}}{{end}}</div>{{end}}
 
 {{define "chapter_rows"}}
 <ul class="chlist">
 {{range .Chapters}}<li class="c-{{.state}}{{if .done}} done{{end}}{{if eq .state "downloaded"}} rd{{end}}">
 <span class="n">{{num .number}}</span>
-<div class="grow">{{if eq .state "downloaded"}}<a href="/read/{{.id}}" class="ell">{{if .name}}{{.name}}{{else}}Capítulo {{num .number}}{{end}}</a>{{else}}<span class="ell">{{if .name}}{{.name}}{{else}}Capítulo {{num .number}}{{end}}</span>{{end}}
-<span class="mut small ell">{{.src}}{{if .upg}} · <span class="up" title="{{if .error}}Intento {{.attempts}}: {{.error}}{{else}}Se sustituirá por el de {{.newsrc}}; mientras tanto puedes leer este{{end}}">{{icon "retry"}} pasa a {{.newsrc}}</span>{{else if .temp}} · temporal{{end}}{{if .bytes}} · {{mb .bytes}} · {{.pages}} págs{{end}}{{if and .error (ne .state "downloaded")}} · <span class="bad" title="{{.error}}">intento {{.attempts}}: {{.error}}</span>{{end}}</span></div>
-<span class="st">{{if eq .state "downloaded"}}{{if .done}}{{else if .page}}<span class="mini" title="página {{add .page 1}} de {{.pages}}"><i style="width:{{pct (add .page 1) .pages}}%"></i></span>{{end}}
+<div class="grow">{{if eq .state "downloaded"}}<a href="/read/{{.id}}" class="ell">{{if .name}}{{.name}}{{else}}{{t "Capítulo"}} {{num .number}}{{end}}</a>{{else}}<span class="ell">{{if .name}}{{.name}}{{else}}{{t "Capítulo"}} {{num .number}}{{end}}</span>{{end}}
+<span class="mut small ell">{{.src}}{{if .upg}} · <span class="up" title="{{if .error}}{{tf "Intento %d:" .attempts}} {{.error}}{{else}}{{tf "Se sustituirá por el de %s; mientras tanto puedes leer este" .newsrc}}{{end}}">{{icon "retry"}} {{tf "pasa a %s" .newsrc}}</span>{{else if .temp}} · {{t "temporal"}}{{end}}{{if .bytes}} · {{mb .bytes}} · {{tf "%d págs" .pages}}{{end}}{{if and .error (ne .state "downloaded")}} · <span class="bad" title="{{.error}}">{{tf "intento %d:" .attempts}} {{.error}}</span>{{end}}</span></div>
+<span class="st">{{if eq .state "downloaded"}}{{if .done}}{{else if .page}}<span class="mini" title="{{tf "página %d de %d" (add .page 1) .pages}}"><i style="width:{{pct (add .page 1) .pages}}%"></i></span>{{end}}
 {{else}}<span class="badge {{.state}}">{{label .state}}</span>{{end}}</span>
-<span class="a">{{if eq .state "downloaded"}}<button class="ib seen{{if .done}} on{{end}}" hx-post="/chapter/{{.id}}/read" hx-vals='{"done":"{{if .done}}0{{else}}1{{end}}"}' hx-target="#chapters" title="{{if .done}}Leído · marcar como no leído{{else}}Marcar como leído{{end}}">{{icon "check"}}</button>
-{{else if eq .state "available"}}<button class="ib" hx-post="/chapter/{{.id}}/retry" hx-target="#chapters" title="Descargar">{{icon "download"}}</button>
-{{else if eq .state "failed"}}<button class="ib" hx-post="/chapter/{{.id}}/retry" hx-target="#chapters" title="Reintentar">{{icon "retry"}}</button>
-{{else if and (eq .state "queued") .attempts}}<button class="ib" hx-post="/chapter/{{.id}}/retry" hx-target="#chapters" title="Reintentar ya">{{icon "retry"}}</button>{{end}}</span>
-</li>{{else}}<li class="mut">Sin capítulos todavía.</li>{{end}}
+<span class="a">{{if eq .state "downloaded"}}<button class="ib seen{{if .done}} on{{end}}" hx-post="/chapter/{{.id}}/read" hx-vals='{"done":"{{if .done}}0{{else}}1{{end}}"}' hx-target="#chapters" title="{{if .done}}{{t "Leído · marcar como no leído"}}{{else}}{{t "Marcar como leído"}}{{end}}">{{icon "check"}}</button>
+{{else if eq .state "available"}}<button class="ib" hx-post="/chapter/{{.id}}/retry" hx-target="#chapters" title="{{t "Descargar"}}">{{icon "download"}}</button>
+{{else if eq .state "failed"}}<button class="ib" hx-post="/chapter/{{.id}}/retry" hx-target="#chapters" title="{{t "Reintentar"}}">{{icon "retry"}}</button>
+{{else if and (eq .state "queued") .attempts}}<button class="ib" hx-post="/chapter/{{.id}}/retry" hx-target="#chapters" title="{{t "Reintentar ya"}}">{{icon "retry"}}</button>{{end}}</span>
+</li>{{else}}<li class="mut">{{t "Sin capítulos todavía."}}</li>{{end}}
 </ul>
 {{end}}
 
-{{define "reader"}}<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+{{define "reader"}}<!doctype html><html lang="{{lang}}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{{.C.title}} · {{num .C.number}}</title>
 <style>
 @font-face{font-family:"UI";src:url(/static/fonts/jakarta.woff2) format("woff2");font-weight:300 800;font-display:swap}
@@ -154,11 +154,11 @@ body{margin:0;background:#000;color:#ccc;font:14px UI,system-ui,sans-serif}
 #end{padding:2rem;text-align:center}
 #end a{color:#ece8e1;margin:0 .6rem}
 </style></head><body>
-<div id="top"><a href="/library/{{.C.series_id}}">←</a><span class="t">{{.C.title}} — cap. {{num .C.number}} {{.C.name}}</span>
+<div id="top"><a href="/library/{{.C.series_id}}">←</a><span class="t">{{.C.title}} — {{t "cap."}} {{num .C.number}} {{.C.name}}</span>
 <span id="pos"></span><button id="mode"></button><button id="rtl"></button>
-{{if .Prev}}<a href="/read/{{.Prev.id}}">‹ anterior</a>{{end}}{{if .Next}}<a href="/read/{{.Next.id}}">siguiente ›</a>{{end}}</div>
+{{if .Prev}}<a href="/read/{{.Prev.id}}">‹ {{t "anterior"}}</a>{{end}}{{if .Next}}<a href="/read/{{.Next.id}}">{{t "siguiente"}} ›</a>{{end}}</div>
 <div id="pages"></div>
-<div id="end">{{if .Next}}<a href="/read/{{.Next.id}}">Siguiente capítulo ›</a>{{end}}<a href="/library/{{.C.series_id}}">Volver a la serie</a></div>
-<script>window.READER={id:{{.C.id}},series:{{.C.series_id}},pages:{{.C.pages}},start:{{if .C.done}}0{{else}}{{.C.page}}{{end}},prev:{{if .Prev}}{{.Prev.id}}{{else}}0{{end}},next:{{if .Next}}{{.Next.id}}{{else}}0{{end}}};</script>
+<div id="end">{{if .Next}}<a href="/read/{{.Next.id}}">{{t "Siguiente capítulo"}} ›</a>{{end}}<a href="/library/{{.C.series_id}}">{{t "Volver a la serie"}}</a></div>
+<script>window.I18N={{jsdict}};window.READER={id:{{.C.id}},series:{{.C.series_id}},pages:{{.C.pages}},start:{{if .C.done}}0{{else}}{{.C.page}}{{end}},prev:{{if .Prev}}{{.Prev.id}}{{else}}0{{end}},next:{{if .Next}}{{.Next.id}}{{else}}0{{end}}};</script>
 <script src="/static/reader.js?v={{v}}"></script>
 </body></html>{{end}}

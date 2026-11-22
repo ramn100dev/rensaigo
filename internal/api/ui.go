@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"rensaigo/internal/config"
+	"rensaigo/internal/i18n"
 	"rensaigo/internal/jobs"
 	"rensaigo/internal/library"
 )
@@ -95,8 +96,8 @@ func (s *Server) cards(where string, args ...any) []M {
 		default:
 			se["track"] = "active"
 		}
-		se["track_label"] = trackLabel[se["track"].(string)]
-		se["pub_label"] = pubLabel[pub]
+		se["track_label"] = i18n.T(trackLabel[se["track"].(string)])
+		se["pub_label"] = i18n.T(pubLabel[pub])
 
 		// capítulo en curso: el último abierto; si se terminó, el siguiente descargado
 		p, started := last[id]
@@ -320,15 +321,15 @@ func friendlyErr(err error) string {
 	}
 	switch c := m[1]; {
 	case c >= "520" && c <= "530":
-		return "El sitio no responde (error " + c + " de Cloudflare: su servidor está caído o no contesta). No es cosa de rensaigo: prueba más tarde o usa otro source."
+		return i18n.Tf("El sitio no responde (error %s de Cloudflare: su servidor está caído o no contesta). No es cosa de rensaigo: prueba más tarde o usa otro source.", c)
 	case c == "502" || c == "503" || c == "504":
-		return "El sitio está caído o saturado (error " + c + "). Prueba más tarde o usa otro source."
+		return i18n.Tf("El sitio está caído o saturado (error %s). Prueba más tarde o usa otro source.", c)
 	case c == "403":
-		return "El sitio ha bloqueado la petición (error 403). Si usa Cloudflare, revisa FlareSolverr."
+		return i18n.T("El sitio ha bloqueado la petición (error 403). Si usa Cloudflare, revisa FlareSolverr.")
 	case c == "404":
-		return "El sitio no encuentra la página (error 404): puede que haya cambiado de dominio. Actualiza la extensión o revisa sus preferencias."
+		return i18n.T("El sitio no encuentra la página (error 404): puede que haya cambiado de dominio. Actualiza la extensión o revisa sus preferencias.")
 	case c == "429":
-		return "Demasiadas peticiones al sitio (error 429). Espera un rato o baja las descargas por source."
+		return i18n.T("Demasiadas peticiones al sitio (error 429). Espera un rato o baja las descargas por source.")
 	}
 	return msg
 }
@@ -359,10 +360,10 @@ func (s *Server) downloadsPause(w http.ResponseWriter, r *http.Request) {
 	s.Eng.SetPaused(p)
 	if p {
 		s.St.Event("descarga", "descargas en pausa")
-		setToast(w, "Descargas en pausa")
+		setToast(w, i18n.T("Descargas en pausa"))
 	} else {
 		s.St.Event("descarga", "descargas reanudadas")
-		setToast(w, "Descargas reanudadas")
+		setToast(w, i18n.T("Descargas reanudadas"))
 	}
 	w.Header().Set("HX-Trigger-After-Settle", `{"hdrchanged":true}`)
 	s.hdrQueue(w, r)
@@ -373,6 +374,7 @@ func (s *Server) hdrEvents(w http.ResponseWriter, r *http.Request) {
 	seen, _ := strconv.ParseInt(s.St.Get("events_seen", "0"), 10, 64)
 	for _, e := range ev {
 		e["new"] = e["id"].(int64) > seen
+		e["kind"] = i18n.T(e["kind"].(string))
 	}
 	if len(ev) > 0 {
 		s.St.Set("events_seen", fmt.Sprint(ev[0]["id"]))
@@ -443,12 +445,12 @@ func (s *Server) settingGroups() []settingGroup {
 	var out []settingGroup
 	for i := range config.Settings {
 		set := &config.Settings[i]
-		if len(out) == 0 || out[len(out)-1].Name != set.Group {
-			out = append(out, settingGroup{Name: set.Group})
+		if len(out) == 0 || out[len(out)-1].Name != i18n.T(set.Group) {
+			out = append(out, settingGroup{Name: i18n.T(set.Group)})
 		}
 		_, custom := s.customSetting(set.Key)
 		g := &out[len(out)-1]
-		g.Items = append(g.Items, M{"Key": set.Key, "Label": set.Label, "Help": set.Help, "Kind": set.Kind, "Options": s.settingOptions(set), "Value": set.Value(s.Cfg), "Custom": custom})
+		g.Items = append(g.Items, M{"Key": set.Key, "Label": i18n.T(set.Label), "Help": i18n.T(set.Help), "Kind": set.Kind, "Options": s.settingOptions(set), "Value": set.Value(s.Cfg), "Custom": custom})
 	}
 	return out
 }
@@ -478,6 +480,10 @@ func (s *Server) settingsSave(w http.ResponseWriter, r *http.Request) {
 	}
 	s.Thumbs.MaxBytes = int64(s.Cfg.ThumbCacheMB) << 20
 	if changed > 0 {
+		if prev := i18n.Lang(); prev != s.Cfg.UILang && (prev == "es") != (s.Cfg.UILang == "es") {
+			i18n.Set(s.Cfg.UILang)
+			w.Header().Set("HX-Refresh", "true") // otro idioma: se recarga la página entera
+		}
 		s.ApplyAdult()
 		s.Eng.Wake()
 		log.Printf("ajustes: %d cambiados desde la web", changed)
@@ -486,9 +492,9 @@ func (s *Server) settingsSave(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case len(errs) > 0:
 	case changed > 0:
-		msg = fmt.Sprintf("%d ajustes guardados", changed)
+		msg = i18n.Tf("%d ajustes guardados", changed)
 	default:
-		msg = "Sin cambios"
+		msg = i18n.T("Sin cambios")
 	}
 	s.render(w, "settings_form", M{"Groups": s.settingGroups(), "Errors": errs, "Msg": msg})
 }

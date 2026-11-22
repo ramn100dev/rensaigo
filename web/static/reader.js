@@ -1,6 +1,7 @@
 // Lector: modo vertical (tira continua) o paginado, con dirección manga (derecha a izquierda) opcional.
 // El progreso se guarda en el servidor; las preferencias de lectura, en localStorage.
 (function () {
+  const L = s => (window.I18N && window.I18N[s]) || s;
   const cfg = window.READER, root = document.getElementById('pages'), bar = document.getElementById('pos');
   let mode = localStorage.getItem('rl-mode') || 'vertical';
   let rtl = localStorage.getItem('rl-rtl') === '1';
@@ -19,14 +20,14 @@
   }
   function img(i, lazy) {
     const el = document.createElement('img');
-    el.src = '/page/' + cfg.id + '/' + i; el.dataset.i = i; el.alt = 'Página ' + (i + 1);
+    el.src = '/page/' + cfg.id + '/' + i; el.dataset.i = i; el.alt = L('Página') + ' ' + (i + 1);
     if (lazy) el.loading = 'lazy';
     return el;
   }
   function render() {
     root.innerHTML = ''; root.className = mode + (rtl ? ' rtl' : '');
-    document.getElementById('mode').textContent = mode === 'vertical' ? 'Vertical' : 'Paginado';
-    document.getElementById('rtl').textContent = rtl ? 'Manga (←)' : 'Occidental (→)';
+    document.getElementById('mode').textContent = mode === 'vertical' ? L('Vertical') : L('Paginado');
+    document.getElementById('rtl').textContent = rtl ? L('Manga (←)') : L('Occidental (→)');
     document.getElementById('rtl').style.display = mode === 'paged' ? '' : 'none';
     if (mode === 'vertical') {
       const io = new IntersectionObserver(es => {

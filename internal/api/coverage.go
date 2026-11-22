@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net/http"
 	"sort"
@@ -10,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"rensaigo/internal/i18n"
 	"rensaigo/internal/jobs"
 )
 
@@ -19,9 +19,9 @@ import (
 // (frente a los que conocemos) y la resolución de una página. El resultado se guarda y ordena «Disponibles».
 
 const (
-	covSample = 12               // series de la biblioteca que se buscan en cada source
-	covFresh  = 30 * 24 * 3600   // una medición vale un mes
-	covPause  = 4 * time.Second  // respiro entre extensiones
+	covSample = 12              // series de la biblioteca que se buscan en cada source
+	covFresh  = 30 * 24 * 3600  // una medición vale un mes
+	covPause  = 4 * time.Second // respiro entre extensiones
 )
 
 type covState struct {
@@ -96,13 +96,13 @@ func (s *Server) covStart(w http.ResponseWriter, r *http.Request) {
 	}
 	if lang == "" {
 		c.mu.Unlock()
-		fail(w, 409, fmt.Errorf("elige un idioma en el filtro: la biblioteca aún no tiene sources"))
+		fail(w, 409, i18n.Errorf("elige un idioma en el filtro: la biblioteca aún no tiene sources"))
 		return
 	}
 	titles := s.covSampleTitles()
 	if len(titles) == 0 {
 		c.mu.Unlock()
-		fail(w, 409, fmt.Errorf("la biblioteca está vacía: no hay con qué comparar"))
+		fail(w, 409, i18n.Errorf("la biblioteca está vacía: no hay con qué comparar"))
 		return
 	}
 	noJS := !s.jsInstalled()

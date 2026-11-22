@@ -27,6 +27,7 @@ import (
 	"rensaigo/internal/config"
 	"rensaigo/internal/extrepo"
 	"rensaigo/internal/hostproc"
+	"rensaigo/internal/i18n"
 	"rensaigo/internal/jobs"
 	"rensaigo/internal/jsengine"
 	"rensaigo/internal/library"
@@ -116,26 +117,37 @@ func New(cfg *config.Config, st *store.Store, host *hostproc.Supervisor, repo *e
 		},
 		"label": func(s string) string {
 			if l, ok := stateLabel[s]; ok {
-				return l
+				return i18n.T(l)
 			}
 			return s
 		},
-		"num": func(v any) string { return strconv.FormatFloat(toF(v), 'f', -1, 64) },
+		"t":  i18n.T,
+		"tf": func(f string, a ...any) string { return i18n.Tf(f, intArgs(a)...) },
+		"tn": func(n any, one, many string) string {
+			if v := intArgs([]any{n})[0]; v != nil {
+				n = v
+			}
+			return i18n.Tn(n, one, many)
+		},
+		"lang":     i18n.Lang,
+		"jsdict":   jsDict,
+		"optlabel": optLabel,
+		"num":      func(v any) string { return strconv.FormatFloat(toF(v), 'f', -1, 64) },
 		"ago": func(v any) string {
 			ts := int64(toF(v))
 			if ts == 0 {
-				return "nunca"
+				return i18n.T("nunca")
 			}
 			d := time.Since(time.Unix(ts, 0)).Round(time.Second)
 			switch {
 			case d < time.Minute:
-				return "hace " + d.String()
+				return i18n.Tf("hace %d s", int(d.Seconds()))
 			case d < time.Hour:
-				return fmt.Sprintf("hace %d min", int(d.Minutes()))
+				return i18n.Tf("hace %d min", int(d.Minutes()))
 			case d < 48*time.Hour:
-				return fmt.Sprintf("hace %d h", int(d.Hours()))
+				return i18n.Tf("hace %d h", int(d.Hours()))
 			}
-			return fmt.Sprintf("hace %d días", int(d.Hours()/24))
+			return i18n.Tf("hace %d días", int(d.Hours()/24))
 		},
 		"mb":     func(v any) string { return fmt.Sprintf("%.1f MB", toF(v)/1e6) },
 		"kmb":    func(v any) string { return fmt.Sprintf("%.1f MB", toF(v)/1024) },
@@ -157,12 +169,24 @@ func New(cfg *config.Config, st *store.Store, host *hostproc.Supervisor, repo *e
 			case d < 48*time.Hour:
 				return fmt.Sprintf("%d h", int(d.Hours()))
 			}
-			return fmt.Sprintf("%d días", int(d.Hours()/24))
+			return i18n.Tf("%d días", int(d.Hours()/24))
 		},
 	}
 	var err error
 	s.tpl, err = template.New("").Funcs(funcs).ParseFS(web.FS, "templates/*.html")
 	return s, err
+}
+
+// intArgs: los números enteros que llegan como float64 (de la BD o de JSON) pasan a int64, para que %d funcione.
+func intArgs(a []any) []any {
+	out := make([]any, len(a))
+	for i, v := range a {
+		if f, ok := v.(float64); ok && f == float64(int64(f)) {
+			v = int64(f)
+		}
+		out[i] = v
+	}
+	return out
 }
 
 // toF convierte cualquier número de plantilla (int, int64, uint64, float64…) a float64.
@@ -287,7 +311,7 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, "/", http.StatusSeeOther)
 			return
 		}
-		s.render(w, "login", M{"Error": "Contraseña incorrecta"})
+		s.render(w, "login", M{"Error": i18n.T("Contraseña incorrecta")})
 		return
 	}
 	s.render(w, "login", M{})
@@ -699,7 +723,7 @@ func (s *Server) seriesFollow(w http.ResponseWriter, r *http.Request) {
 	}
 	s.touch(id)
 	if r.FormValue("add_to") == "" && r.Header.Get("HX-Request") != "" {
-		libChanged(w, "«"+m.Title+"» añadida a la biblioteca")
+		libChanged(w, i18n.Tf("«%s» añadida a la biblioteca", m.Title))
 		s.render(w, "follow_done", M{"ID": id, "Title": m.Title, "Thumbnail": m.Thumbnail})
 		return
 	}
@@ -754,7 +778,7 @@ func (s *Server) seriesAction(w http.ResponseWriter, r *http.Request) {
 	switch r.PathValue("action") {
 	case "pause":
 		_, err = s.St.DB.Exec(`UPDATE series SET paused=1 WHERE id=?`, id)
-		toast = "Rastreo pausado"
+		toast = i18n.T("Rastreo pausado")
 	case "resume":
 		_, err = s.St.DB.Exec(`UPDATE series SET paused=0 WHERE id=?`, id)
 		s.Eng.Wake()
@@ -765,9 +789,9 @@ func (s *Server) seriesAction(w http.ResponseWriter, r *http.Request) {
 		var ok, bad int
 		ok, bad, err = s.verifySeries(id)
 		if bad > 0 {
-			toast = fmt.Sprintf("%d capítulos correctos · %d ilegibles o desaparecidos, vuelven a «disponible»", ok, bad)
+			toast = i18n.Tf("%d capítulos correctos · %d ilegibles o desaparecidos, vuelven a «disponible»", ok, bad)
 		} else {
-			toast = fmt.Sprintf("Los %d capítulos del disco están bien", ok)
+			toast = i18n.Tf("Los %d capítulos del disco están bien", ok)
 		}
 	case "retry-failed":
 		_, err = s.St.DB.Exec(`UPDATE chapter SET state='queued', attempts=0, next_try=0, error='' WHERE series_id=? AND (state='failed' OR (state='queued' AND attempts>0))`, id)
@@ -823,7 +847,7 @@ func (s *Server) seriesAction(w http.ResponseWriter, r *http.Request) {
 	case "delete": // quita la serie Y BORRA su carpeta de la biblioteca
 		if err = s.deleteSeries(id); err == nil {
 			if card {
-				setToast(w, "Serie eliminada junto con sus archivos")
+				setToast(w, i18n.T("Serie eliminada junto con sus archivos"))
 				return
 			}
 			w.Header().Set("HX-Redirect", "/library")
@@ -891,12 +915,22 @@ func (s *Server) sourcesIndex(w http.ResponseWriter, r *http.Request) {
 		s.St.DB.QueryRow(`SELECT enabled FROM source WHERE id=?`, a).Scan(&on)
 		withAdult[base] = on == 1
 	}
+	// de una extensión con varios idiomas solo se ven los activos y los del idioma preferido
+	shownPkg := map[string]bool{}
+	for _, src := range srcs {
+		if src["enabled"].(int64) == 1 || prefLang(src["lang"].(string), s.Cfg.PrefLang) {
+			shownPkg[src["pkg"].(string)] = true
+		}
+	}
 	kept := srcs[:0]
 	for _, src := range srcs {
 		if src["pkg"] == trial {
 			continue // instalada solo para medirla: no se muestra
 		}
 		if _, ok := adult[src["id"].(string)]; ok {
+			continue
+		}
+		if src["enabled"].(int64) == 0 && !prefLang(src["lang"].(string), s.Cfg.PrefLang) && shownPkg[src["pkg"].(string)] {
 			continue
 		}
 		src["adult"] = withAdult[src["id"].(string)]
@@ -989,15 +1023,34 @@ func (s *Server) sourcesInstall(w http.ResponseWriter, r *http.Request) {
 		fail(w, 502, err)
 		return
 	}
+	// una extensión con muchos idiomas (MangaDex trae 60): solo se activan los del idioma preferido, si tiene alguno
+	if len(infos) > 1 {
+		match := false
+		for _, in := range infos {
+			match = match || prefLang(in.Lang, s.Cfg.PrefLang)
+		}
+		if match {
+			for _, in := range infos {
+				if !prefLang(in.Lang, s.Cfg.PrefLang) {
+					s.St.DB.Exec(`UPDATE source SET enabled=0 WHERE id=?`, in.ID)
+				}
+			}
+		}
+	}
 	s.ApplyAdult()
 	adult := s.adultSiblings()
 	for _, in := range infos {
-		if _, ok := adult[in.ID]; !ok {
+		var on int
+		s.St.DB.QueryRow(`SELECT enabled FROM source WHERE id=?`, in.ID).Scan(&on)
+		if _, ok := adult[in.ID]; !ok && on == 1 {
 			s.probeSource(in.ID) // se prueba sola: no hace falta pulsar «probar»
 		}
 	}
 	w.Header().Set("HX-Redirect", "/sources")
 }
+
+// prefLang: el idioma de un source vale para el preferido («es» incluye «es-419»; «all» lo incluye todo).
+func prefLang(lang, pref string) bool { return pref == "all" || langMatch(lang, pref) }
 
 func (s *Server) sourcesUninstall(w http.ResponseWriter, r *http.Request) {
 	if err := s.Repo.Uninstall(r.FormValue("pkg")); err != nil {
@@ -1025,9 +1078,9 @@ func (s *Server) sourcesTest(w http.ResponseWriter, r *http.Request) {
 	var name string
 	s.St.DB.QueryRow(`SELECT name FROM source WHERE id=?`, id).Scan(&name)
 	if err != nil {
-		setToast(w, name+": no responde · "+trunc(err.Error(), 120))
+		setToast(w, i18n.Tf("%s: no responde · %s", name, trunc(err.Error(), 120)))
 	} else {
-		setToast(w, name+": funciona")
+		setToast(w, i18n.Tf("%s: funciona", name))
 	}
 	s.sourcesIndex(w, r) // el botón se queda con #installed (hx-select): se ve el estado nuevo sin recargar
 }
@@ -1094,14 +1147,14 @@ func (s *Server) sourceVersion(w http.ResponseWriter, r *http.Request) {
 			fail(w, 502, err)
 			return
 		}
-		setToast(w, "Ahora usa la versión "+v+" (fijada)")
+		setToast(w, i18n.Tf("Ahora usa la versión %s (fijada)", v))
 		w.Header().Set("HX-Trigger-After-Settle", `{"srcchanged":true}`)
 	} else {
 		s.Repo.SetPinned(pkg, pin)
 		if pin {
-			setToast(w, "Fijada: no se actualizará sola")
+			setToast(w, i18n.T("Fijada: no se actualizará sola"))
 		} else {
-			setToast(w, "Se actualizará con las demás")
+			setToast(w, i18n.T("Se actualizará con las demás"))
 		}
 		w.Header().Set("HX-Trigger-After-Settle", `{"srcchanged":true}`)
 	}
@@ -1172,7 +1225,7 @@ func (s *Server) importIndex(w http.ResponseWriter, r *http.Request) {
 func (s *Server) importScan(w http.ResponseWriter, r *http.Request) {
 	rep := s.QuickScan(true)
 	if rep == nil {
-		fail(w, 500, fmt.Errorf("no se pudo escanear %s", s.Cfg.LibraryDir))
+		fail(w, 500, i18n.Errorf("no se pudo escanear %s", s.Cfg.LibraryDir))
 		return
 	}
 	w.Header().Set("HX-Redirect", "/system#importar")
@@ -1258,7 +1311,7 @@ func (s *Server) importAuto(w http.ResponseWriter, r *http.Request) {
 		if err := s.Eng.CheckSeries(ctx, id); err != nil {
 			s.St.Event("importación", "«%s» enlazada con %s, pero la comprobación falló: %v", title, srcName(src), err)
 		}
-		setToast(w, fmt.Sprintf("«%s» emparejada con %s", title, srcName(src)))
+		setToast(w, i18n.Tf("«%s» emparejada con %s", title, srcName(src)))
 	}
 
 	if url := r.FormValue("url"); url != "" {
@@ -1273,7 +1326,7 @@ func (s *Server) importAuto(w http.ResponseWriter, r *http.Request) {
 		}
 		extra := M{"cands": cands}
 		if len(cands) == 0 {
-			extra["msg"] = "No aparece en ningún source activo"
+			extra["msg"] = i18n.T("No aparece en ningún source activo")
 		}
 		if len(fails) > 0 {
 			extra["fails"] = strings.Join(fails, ", ")
@@ -1294,9 +1347,9 @@ func (s *Server) importAuto(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if best < 0 || score < 0.8 {
-		msg := "No aparece en " + srcName(src)
+		msg := i18n.Tf("No aparece en %s", srcName(src))
 		if best >= 0 {
-			msg += " (lo más parecido: «" + ms[best].Title + "»)"
+			msg += " " + i18n.Tf("(lo más parecido: «%s»)", ms[best].Title)
 		}
 		row(M{"msg": msg})
 		return

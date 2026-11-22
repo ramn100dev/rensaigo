@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"rensaigo/internal/i18n"
 	"rensaigo/internal/library"
 )
 
@@ -103,16 +104,18 @@ func (f *feed) done() {
 
 func (s *Server) opdsRoot(w http.ResponseWriter, r *http.Request, base string) {
 	f := s.newFeed(w, base, "root", "rensaigo", "", opdsNav)
-	f.nav("reading", "Leyendo", "/reading", "Series empezadas con capítulos sin leer")
-	f.nav("latest", "Novedades", "/latest", "Últimos capítulos descargados")
-	f.nav("all", "Todas las series", "/all", "La biblioteca entera")
+	f.nav("reading", i18n.T("Leyendo"), "/reading", i18n.T("Series empezadas con capítulos sin leer"))
+	f.nav("latest", i18n.T("Novedades"), "/latest", i18n.T("Últimos capítulos descargados"))
+	f.nav("all", i18n.T("Todas las series"), "/all", i18n.T("La biblioteca entera"))
 	for _, c := range s.rows(`SELECT category, count(*) n FROM series GROUP BY category ORDER BY category`) {
-		f.nav("cat:"+c["category"].(string), c["category"].(string), "/all?cat="+urlq(c["category"].(string)), fmt.Sprint(c["n"], " series"))
+		f.nav("cat:"+c["category"].(string), c["category"].(string), "/all?cat="+urlq(c["category"].(string)), i18n.Tf("%d series", c["n"]))
 	}
 	f.done()
 }
 
-func urlq(s string) string { return strings.NewReplacer("%", "%25", "&", "%26", "+", "%2B", " ", "%20", "#", "%23", "?", "%3F").Replace(s) }
+func urlq(s string) string {
+	return strings.NewReplacer("%", "%25", "&", "%26", "+", "%2B", " ", "%20", "#", "%23", "?", "%3F").Replace(s)
+}
 
 const opdsSeriesQ = `SELECT s.id, s.title, s.author, s.description,
 	(SELECT count(*) FROM chapter WHERE series_id=s.id AND state='downloaded') AS n,
@@ -140,7 +143,7 @@ func (f *feed) series(rows []M) {
 
 func (s *Server) opdsAll(w http.ResponseWriter, r *http.Request, base string) {
 	q, args := opdsSeriesQ, []any{}
-	title := "Todas las series"
+	title := i18n.T("Todas las series")
 	if c := r.FormValue("cat"); c != "" {
 		q += ` WHERE s.category=?`
 		args = append(args, c)
@@ -159,7 +162,7 @@ func (s *Server) opdsReading(w http.ResponseWriter, r *http.Request, base string
 
 func (s *Server) opdsSearch(w http.ResponseWriter, r *http.Request, base string) {
 	q := strings.TrimSpace(r.FormValue("q"))
-	f := s.newFeed(w, base, "search", "Buscar: "+q, "/search?q="+urlq(q), opdsNav)
+	f := s.newFeed(w, base, "search", i18n.Tf("Buscar: %s", q), "/search?q="+urlq(q), opdsNav)
 	if q != "" {
 		f.series(s.rows(opdsSeriesQ+` WHERE s.title LIKE ? ORDER BY s.title COLLATE NOCASE`, "%"+q+"%"))
 	}
@@ -169,7 +172,7 @@ func (s *Server) opdsSearch(w http.ResponseWriter, r *http.Request, base string)
 func (s *Server) opdsSearchDesc(w http.ResponseWriter, r *http.Request, base string) {
 	w.Header().Set("Content-Type", "application/opensearchdescription+xml")
 	fmt.Fprintf(w, `<?xml version="1.0" encoding="UTF-8"?>
-<OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/"><ShortName>rensaigo</ShortName><Description>Buscar series</Description>
+<OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/"><ShortName>rensaigo</ShortName><Description>`+i18n.T("Buscar series")+`</Description>
 <InputEncoding>UTF-8</InputEncoding><OutputEncoding>UTF-8</OutputEncoding>
 <Url type="%s" template="%s/search?q={searchTerms}"/></OpenSearchDescription>
 `, opdsNav, base)
@@ -181,7 +184,7 @@ const opdsChapterQ = `SELECT c.id, c.series_id, c.number, c.name, c.pages, c.byt
 
 func (f *feed) chapters(rows []M, withSeries bool) {
 	for _, c := range rows {
-		t := "Capítulo " + library.FormatNumber(c["number"].(float64))
+		t := i18n.T("Capítulo") + " " + library.FormatNumber(c["number"].(float64))
 		if n := c["name"].(string); n != "" && !strings.Contains(n, library.FormatNumber(c["number"].(float64))) {
 			t += " · " + n
 		} else if n != "" {
@@ -191,12 +194,12 @@ func (f *feed) chapters(rows []M, withSeries bool) {
 			t = c["stitle"].(string) + " · " + t
 		}
 		pages, page, done := c["pages"].(int64), c["page"].(int64), c["done"].(int64)
-		state := "sin leer"
+		state := i18n.T("sin leer")
 		switch {
 		case done == 1:
-			state, page = "leído", pages-1
+			state, page = i18n.T("leído"), pages-1
 		case page > 0:
-			state = fmt.Sprintf("página %d de %d", page+1, pages)
+			state = i18n.Tf("página %d de %d", page+1, pages)
 		}
 		upd := time.Unix(max(c["created"].(int64), c["updated"].(int64)), 0).UTC().Format(time.RFC3339)
 		fmt.Fprintf(&f.b, `<entry><id>urn:rensaigo:chapter:%d</id><title>%s</title><updated>%s</updated><content type="text">%s</content>
@@ -225,7 +228,7 @@ func (s *Server) opdsSeries(w http.ResponseWriter, r *http.Request, base string)
 }
 
 func (s *Server) opdsLatest(w http.ResponseWriter, r *http.Request, base string) {
-	f := s.newFeed(w, base, "latest", "Novedades", "/latest", opdsAcq)
+	f := s.newFeed(w, base, "latest", i18n.T("Novedades"), "/latest", opdsAcq)
 	f.chapters(s.rows(opdsChapterQ+` ORDER BY c.cbz_mtime DESC, c.id DESC LIMIT 60`), true)
 	f.done()
 }

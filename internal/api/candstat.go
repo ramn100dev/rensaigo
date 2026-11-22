@@ -12,6 +12,8 @@ import (
 
 	"rensaigo/internal/library"
 
+	"html"
+	"rensaigo/internal/i18n"
 	"rensaigo/internal/jobs"
 )
 
@@ -140,5 +142,5 @@ func (s *Server) ssWidth(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		return
 	}
-	fmt.Fprintf(w, `<span title="Ancho de página medido en la web"> · %d px</span>`, res.width)
+	fmt.Fprintf(w, `<span title="%s"> · %d px</span>`, html.EscapeString(i18n.T("Ancho de página medido en la web")), res.width)
 }

@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"rensaigo/internal/i18n"
 	"rensaigo/internal/library"
 	"rensaigo/internal/notify"
 )
@@ -122,14 +123,14 @@ func (s *Server) flushChapters(ctx context.Context) {
 	sort.Slice(items, func(i, j int) bool { return items[i].title < items[j].title })
 	desc := func(nums []float64) string {
 		if len(nums) == 1 {
-			return "capítulo " + library.FormatNumber(nums[0])
+			return i18n.Tf("capítulo %s", library.FormatNumber(nums[0]))
 		}
-		return fmt.Sprintf("%d capítulos (%s–%s)", len(nums), library.FormatNumber(nums[0]), library.FormatNumber(nums[len(nums)-1]))
+		return i18n.Tf("%d capítulos (%s–%s)", len(nums), library.FormatNumber(nums[0]), library.FormatNumber(nums[len(nums)-1]))
 	}
 	base := s.notifyBase()
 	if len(items) == 1 {
 		it := items[0]
-		m := notify.Msg{Kind: "chapters", Level: "info", Title: it.title, Text: "Nuevo: " + desc(it.nums)}
+		m := notify.Msg{Kind: "chapters", Level: "info", Title: it.title, Text: i18n.Tf("Nuevo: %s", desc(it.nums))}
 		if base != "" {
 			m.Link = fmt.Sprintf("%s/library/%d", base, it.sid)
 		}
@@ -142,7 +143,7 @@ func (s *Server) flushChapters(ctx context.Context) {
 		lines = append(lines, "• "+it.title+": "+desc(it.nums))
 		total += len(it.nums)
 	}
-	m := notify.Msg{Kind: "chapters", Level: "info", Title: fmt.Sprintf("%d capítulos nuevos", total), Text: strings.Join(lines, "\n")}
+	m := notify.Msg{Kind: "chapters", Level: "info", Title: i18n.Tf("%d capítulos nuevos", total), Text: strings.Join(lines, "\n")}
 	if base != "" {
 		m.Link = base + "/library"
 	}
@@ -232,17 +233,17 @@ func (s *Server) notifyAction(w http.ResponseWriter, r *http.Request) {
 		rand.Read(b)
 		c.ID = hex.EncodeToString(b)
 		ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
-		err := notify.Send(ctx, c, notify.Msg{Kind: "test", Level: "info", Title: "rensaigo", Text: "Notificaciones conectadas ✔"})
+		err := notify.Send(ctx, c, notify.Msg{Kind: "test", Level: "info", Title: "rensaigo", Text: i18n.T("Notificaciones conectadas ✔")})
 		cancel()
 		if err != nil {
-			fail(w, 502, fmt.Errorf("no se pudo mandar el mensaje de prueba: %v", err))
+			fail(w, 502, i18n.Errorf("no se pudo mandar el mensaje de prueba: %v", err))
 			return
 		}
 		cs = append(cs, c)
 		if s.notifyBase() == "" {
 			s.St.Set("notify.base", guessBase(r))
 		}
-		msg = "Añadido: te ha llegado un mensaje de prueba"
+		msg = i18n.T("Añadido: te ha llegado un mensaje de prueba")
 	case "del":
 		if idx >= 0 {
 			cs = append(cs[:idx], cs[idx+1:]...)
@@ -250,13 +251,13 @@ func (s *Server) notifyAction(w http.ResponseWriter, r *http.Request) {
 	case "test":
 		if idx >= 0 {
 			ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
-			err := notify.Send(ctx, cs[idx], notify.Msg{Kind: "test", Level: "info", Title: "rensaigo", Text: "Mensaje de prueba"})
+			err := notify.Send(ctx, cs[idx], notify.Msg{Kind: "test", Level: "info", Title: "rensaigo", Text: i18n.T("Mensaje de prueba")})
 			cancel()
 			if err != nil {
 				fail(w, 502, err)
 				return
 			}
-			setToast(w, "Enviado")
+			setToast(w, i18n.T("Enviado"))
 		}
 	case "event": // activa o desactiva un tipo de aviso en un canal
 		if idx >= 0 {
@@ -277,11 +278,11 @@ func (s *Server) notifyAction(w http.ResponseWriter, r *http.Request) {
 	case "base":
 		b := strings.TrimSpace(r.FormValue("base"))
 		if b != "" && !strings.HasPrefix(b, "http://") && !strings.HasPrefix(b, "https://") {
-			fail(w, 400, fmt.Errorf("la dirección debe empezar por http:// o https://"))
+			fail(w, 400, i18n.Errorf("la dirección debe empezar por http:// o https://"))
 			return
 		}
 		s.St.Set("notify.base", b)
-		setToast(w, "Guardado")
+		setToast(w, i18n.T("Guardado"))
 	default:
 		http.NotFound(w, r)
 		return

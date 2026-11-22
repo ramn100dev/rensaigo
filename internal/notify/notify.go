@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"rensaigo/internal/i18n"
 	"strings"
 	"time"
 )
@@ -45,35 +46,35 @@ func (c Channel) Wants(kind string) bool {
 func (c Channel) Validate() error {
 	need := func(v, what string) error {
 		if strings.TrimSpace(v) == "" {
-			return fmt.Errorf("falta %s", what)
+			return i18n.Errorf("falta %s", what)
 		}
 		return nil
 	}
 	httpURL := func(v string) error {
 		u, err := url.Parse(v)
 		if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
-			return fmt.Errorf("la dirección debe empezar por http:// o https://")
+			return i18n.Errorf("la dirección debe empezar por http:// o https://")
 		}
 		return nil
 	}
 	switch c.Kind {
 	case "telegram":
-		if err := need(c.Token, "el token del bot"); err != nil {
+		if err := need(c.Token, i18n.T("el token del bot")); err != nil {
 			return err
 		}
-		return need(c.Chat, "el chat id")
+		return need(c.Chat, i18n.T("el chat id"))
 	case "ntfy":
 		if err := httpURL(c.URL); err != nil {
 			return err
 		}
 		if u, _ := url.Parse(c.URL); strings.Trim(u.Path, "/") == "" {
-			return fmt.Errorf("falta el tema al final de la dirección (https://ntfy.sh/mi-tema)")
+			return i18n.Errorf("falta el tema al final de la dirección (https://ntfy.sh/mi-tema)")
 		}
 	case "gotify":
 		if err := httpURL(c.URL); err != nil {
 			return err
 		}
-		return need(c.Token, "el token de la aplicación")
+		return need(c.Token, i18n.T("el token de la aplicación"))
 	case "discord", "webhook":
 		return httpURL(c.URL)
 	default:

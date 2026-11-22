@@ -5,7 +5,6 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"image"
 	_ "image/gif"
@@ -15,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"rensaigo/internal/i18n"
 	"strconv"
 	"strings"
 	"sync"
@@ -209,7 +209,7 @@ func (e *Engine) Follow(ctx context.Context, sourceID string, m Manga, category 
 	}
 	title := strings.TrimSpace(m.Title)
 	if title == "" {
-		return 0, errors.New("título vacío")
+		return 0, i18n.Errorf("título vacío")
 	}
 	dir := filepath.Join(e.Cfg.LibraryDir, library.SafeName(category), library.SafeName(title))
 	var sid int64
@@ -389,7 +389,7 @@ func (e *Engine) CheckSeries(ctx context.Context, seriesID int64) error {
 	now := time.Now().Unix()
 	if len(list) == 0 {
 		e.St.DB.Exec(`UPDATE series SET last_check=?, last_error='sin sources activos' WHERE id=?`, now, seriesID)
-		return errors.New("la serie no tiene sources activos")
+		return i18n.Errorf("la serie no tiene sources activos")
 	}
 	var firstErr error
 	added, upgrades, okSources := 0, 0, 0
@@ -764,7 +764,7 @@ func (e *Engine) download(ctx context.Context, id int64, a *Active) error {
 	}
 	json.Unmarshal(res, &pr)
 	if len(pr.Pages) == 0 {
-		return errors.New("el source no devolvió páginas")
+		return i18n.Errorf("el source no devolvió páginas")
 	}
 	e.mu.Lock()
 	a.Total = len(pr.Pages)
@@ -807,7 +807,7 @@ func (e *Engine) download(ctx context.Context, id int64, a *Active) error {
 			if err != nil {
 				emu.Lock()
 				if firstErr == nil {
-					firstErr = fmt.Errorf("página %d: %w", i+1, err)
+					firstErr = i18n.Errorf("página %d: %w", i+1, err)
 				}
 				emu.Unlock()
 				cancel()
