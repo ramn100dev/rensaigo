@@ -1,0 +1,29 @@
+# docker compose up -d  ->  http://<server>:9840
+services:
+  rensaigo:
+    image: ghcr.io/ramn100dev/rensaigo:latest
+    # build: { context: ., dockerfile: docker/Dockerfile }   # to build it yourself
+    container_name: rensaigo
+    restart: unless-stopped
+    user: "1000:1000"                                   # owner of the library folder
+    ports:
+      - "9840:9840"
+    environment:
+      RENSAIGO_FLARESOLVERR_URL: "http://flaresolverr:8191"  # empty = no Cloudflare solving
+      # RENSAIGO_PASSWORD: "change-me"                       # single password; empty = no login
+      TZ: "Europe/Madrid"
+    volumes:
+      - config:/config                                  # database, extensions, logs, backups, secret.key
+      - ${LIBRARY:-./library}:/library                  # <Category>/<Series>/*.cbz
+    mem_limit: 256m                                     # safety net; measured peak is ~110 MiB
+    depends_on: [flaresolverr]
+
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    container_name: flaresolverr
+    restart: unless-stopped
+    environment:
+      TZ: "Europe/Madrid"
+
+volumes:
+  config:

@@ -1,0 +1,45 @@
+{{define "import_section"}}
+<section class="panel" id="importar">
+<div class="panel-h"><h2>Biblioteca</h2>
+<span class="tip" tabindex="0" data-tip="Se escanea sola al arrancar y al entrar en la biblioteca, sin releer los CBZ ya conocidos. Adopta lo que hay en {{.Lib}} (<Categoría>/<Serie>/*.cbz) sin volver a descargar nada. Manda lo que hay en disco: rensaio.json solo se usa como pista de metadatos.">?</span></div>
+<button class="pri wide" hx-post="/import/scan" hx-indicator="this">{{icon "scan"}}Escanear biblioteca</button>
+{{with .Report}}<p class="mut small">Último escaneo: {{.SeriesNew}} series nuevas · {{.ChaptersNew}} capítulos nuevos{{if .ChaptersChanged}} · {{.ChaptersChanged}} modificados{{end}}{{if .MissingOnDisk}} · <span class="warn">{{.MissingOnDisk}} desaparecidos</span>{{end}} · {{.DurationMillis}} ms
+<span class="tip" tabindex="0" data-tip="{{.SeriesSeen}} series y {{.ChaptersSeen}} capítulos ya conocidos. {{.JSONPhantoms}} entradas de rensaio.json sin archivo en disco (descartadas). {{len .Ignored}} carpetas sin CBZ ignoradas.{{if .Unreadable}} {{len .Unreadable}} CBZ ilegibles.{{end}}">?</span></p>{{end}}
+
+<h3>Sin emparejar <span class="mut small">{{len .Pending}}</span></h3>
+{{if .Pending}}<table class="pairs">
+{{range .Pending}}{{template "pair_row" (dict "P" . "Sources" $.Sources)}}{{end}}
+</table>{{else}}<p class="mut small">Todo emparejado.</p>{{end}}
+</section>
+{{end}}
+
+{{define "pair_row"}}{{$p := .P}}<tbody id="pair{{$p.id}}"><tr><td><b class="ell" title="{{$p.title}}">{{$p.title}}</b><span class="mut small">{{$p.chapters}} caps{{if $p.hint_source}} · venía de {{$p.hint_source}}{{end}}</span>
+{{if $p.msg}}<span class="bad small pmsg">{{$p.msg}}</span>{{end}}</td>
+<td colspan="2"><form class="pairf" hx-post="/import/{{$p.id}}/auto" hx-target="closest tbody" hx-swap="outerHTML" hx-indicator="closest tbody">
+<select name="source" aria-label="Source">{{$sug := $p.suggested}}<option value="all" {{if or (not $sug) (eq $sug "all")}}selected{{end}}>Todos los sources</option>{{range .Sources}}<option value="{{.id}}" {{if eq .id $sug}}selected{{end}}>{{.name}}</option>{{end}}</select>
+<button class="ib" title="Buscar y emparejar">{{icon "search"}}</button>
+<span class="pairing">Emparejando…</span></form></td></tr>
+{{if $p.cands}}<tr class="cands"><td colspan="3"><div class="cstrip">{{range $p.cands}}<form hx-post="/import/{{$p.id}}/auto" hx-target="closest tbody" hx-swap="outerHTML" hx-indicator="closest tbody">
+<input type="hidden" name="source" value="{{.Source}}"><input type="hidden" name="url" value="{{.URL}}"><input type="hidden" name="title" value="{{.Title}}"><input type="hidden" name="memo" value="{{.MemoS}}">
+<button class="cand" title="Usar «{{.Title}}» de {{.SourceName}}"><img loading="lazy" referrerpolicy="no-referrer" src="{{.Thumbnail}}" alt=""><b>{{.Title}}</b><span>{{.SourceName}}</span></button></form>{{end}}</div>
+{{if $p.fails}}<p class="mut small">Sin respuesta: {{$p.fails}}</p>{{end}}</td></tr>
+{{else if $p.fails}}<tr class="cands"><td colspan="3"><p class="mut small">Sin respuesta: {{$p.fails}}</p></td></tr>{{end}}
+</tbody>{{end}}
+
+{{define "import_modal"}}
+<form class="searchbar" hx-get="/import/{{.ID}}/candidates" hx-target="#cand" hx-indicator="#cspin">
+<input type="hidden" name="partial" value="1">
+<select name="source" aria-label="Source">{{$cur := .Source}}{{range .Sources}}<option value="{{.id}}" {{if eq .id $cur}}selected{{end}}>{{.name}} ({{.lang}})</option>{{end}}</select>
+<input type="search" name="q" value="{{.Q}}" aria-label="Título"><button>{{icon "search"}}Buscar</button>
+</form><p id="cspin" class="htmx-indicator mut small">Buscando…</p>
+<div id="cand">{{template "import_candidates" .}}</div>
+{{end}}
+
+{{define "import_candidates"}}
+{{if .Err}}<p class="bad small">{{.Err}}</p>{{else if not .Mangas}}<p class="mut small">Sin resultados: prueba con otro texto u otro source.</p>{{end}}
+<div class="results">{{range .Mangas}}<form class="r" hx-post="/import/{{$.ID}}/match" hx-indicator="find .htmx-indicator" hx-confirm="¿Confirmas que «{{.Title}}» es esta serie?">
+<img loading="lazy" referrerpolicy="no-referrer" src="{{.Thumbnail}}" alt=""><b title="{{.Title}}">{{.Title}}</b>
+<input type="hidden" name="source" value="{{$.Source}}"><input type="hidden" name="url" value="{{.URL}}"><input type="hidden" name="title" value="{{.Title}}"><input type="hidden" name="memo" value="{{printf "%s" .Memo}}">
+<label class="small chk"><input type="checkbox" name="auto" value="1" checked> bajar lo que falte</label>
+<button class="pri sm">Es esta<span class="htmx-indicator"> …</span></button></form>{{end}}</div>
+{{end}}

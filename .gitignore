@@ -1,0 +1,12 @@
+host/vendor/
+host/build/
+host/.gradle-home/
+host/.gradle/
+host/.kotlin/
+testdata/
+.build/
+*.db
+*.db-wal
+*.db-shm
+/rensaigo
+internal/extrepo/testdata/index.pb

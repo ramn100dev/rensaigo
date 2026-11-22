@@ -1,0 +1,121 @@
+{{define "track_panel"}}<div id="tp-{{.Key}}" class="malpanel" hx-target="this" hx-swap="outerHTML">
+{{if .Connected}}
+<p class="row"><span class="dot s-ok"></span><span>Conectado como <b>{{.User}}</b></span></p>
+<p class="mut small">{{.Linked}} series vinculadas · {{.Unlinked}} sin vincular</p>
+<div class="row"><button hx-post="/track/{{.Key}}/link-all" hx-indicator="this" {{if not .Unlinked}}disabled{{end}} title="Vincula las que tengan una coincidencia clara en {{.Name}}">{{icon "link"}}Vincular series</button>
+<button class="ib danger" hx-post="/track/{{.Key}}/disconnect" hx-confirm="¿Desconectar {{.Name}}? Las series siguen vinculadas." title="Desconectar">{{icon "logout"}}</button></div>
+
+{{else if eq .Key "mal"}}
+<form hx-post="/track/mal/credentials">
+<label class="field"><span class="fl">Client ID <span class="tip" tabindex="0" data-tip="En myanimelist.net/apiconfig pulsa «Create ID». App Type: other. App Redirect URL: la dirección de abajo, tal cual. El resto de campos da igual. Copia aquí el Client ID que te da.">?</span></span>
+<input name="client_id" value="{{.ClientID}}" type="text" autocomplete="off" spellcheck="false"></label>
+<label class="field"><span class="fl">Client Secret <span class="tip" tabindex="0" data-tip="Solo si al crear la app elegiste el tipo «web». Con «other» no hay secreto.">?</span></span>
+<input name="client_secret" type="password" autocomplete="off" placeholder="{{if .HasSecret}}guardado{{else}}opcional{{end}}"></label>
+<p class="small mut redir">Redirect URL <code>{{.Redirect}}</code></p>
+<button class="pri">{{icon "link"}}Conectar</button>
+</form>
+
+{{else if eq .Key "anilist"}}
+<form hx-post="/track/anilist/credentials">
+<label class="field"><span class="fl">Client ID <span class="tip" tabindex="0" data-tip="En anilist.co/settings/developer pulsa «Create New Client». Name: el que quieras. Redirect URL: la dirección de abajo, tal cual. Guarda y copia aquí el ID y el Secret.">?</span></span>
+<input name="client_id" value="{{.ClientID}}" type="text" inputmode="numeric" autocomplete="off" spellcheck="false"></label>
+<label class="field"><span class="fl">Client Secret</span>
+<input name="client_secret" type="password" autocomplete="off"{{if .HasSecret}} placeholder="guardado"{{end}}></label>
+<p class="small mut redir">Redirect URL <code>{{.Redirect}}</code></p>
+<button class="pri">{{icon "link"}}Conectar</button>
+</form>
+
+{{else if eq .Key "mangadex"}}
+<form hx-post="/track/mangadex/login" hx-indicator="find button.pri" hx-disabled-elt="find button.pri">
+<div class="grid2">
+<label class="field"><span class="fl">Usuario</span><input name="username" type="text" autocomplete="username" spellcheck="false"></label>
+<label class="field"><span class="fl">Contraseña <span class="tip" tabindex="0" data-tip="Solo se usa para conectar: no se guarda. Después la sesión se renueva sola.">?</span></span><input name="password" type="password" autocomplete="current-password"></label>
+<label class="field"><span class="fl">Client ID <span class="tip" tabindex="0" data-tip="En mangadex.org/settings, apartado API Clients, crea un cliente personal. MangaDex puede tardar en aprobarlo; mientras esté pendiente no funciona. Copia el client ID (personal-client-…) y pulsa «Get Secret» para el secreto.">?</span></span><input name="client_id" value="{{.ClientID}}" type="text" autocomplete="off" spellcheck="false"></label>
+<label class="field"><span class="fl">Client Secret</span><input name="client_secret" type="password" autocomplete="off"{{if .HasSecret}} placeholder="guardado"{{end}}></label>
+</div>
+<button class="pri">{{icon "link"}}Conectar</button>
+</form>
+{{end}}
+{{if .Msg}}<p class="small mut">{{.Msg}}</p>{{end}}{{if .Err}}<p class="small bad">{{.Err}}</p>{{end}}
+</div>{{end}}
+
+{{define "track_box"}}<div id="trk-{{.Key}}" class="malbox">
+{{if .L}}<div class="malrow"><span class="logo sm" style="--c:{{.Look.c}}">{{.Look.s}}</span><div class="grow"><b>{{.Name}}</b> <a class="mut small" href="{{.URL}}" target="_blank" rel="noreferrer">ver ficha {{icon "ext"}}</a>
+<div class="small mut">{{.L.rd}}{{if .L.total}} de {{.L.total}}{{end}} capítulos leídos en tu lista{{if not .On}} · sin conectar: no se sincroniza{{end}}</div></div>
+<button class="ib danger" hx-post="/series/{{.SID}}/track/{{.Key}}/unlink" hx-target="#trk-{{.Key}}" hx-swap="outerHTML" hx-confirm="¿Desvincular de {{.Name}}?" title="Desvincular">{{icon "x"}}</button></div>
+{{else}}<div class="malrow"><span class="logo sm" style="--c:{{.Look.c}}">{{.Look.s}}</span><div class="grow"><b>{{.Name}}</b><div class="small mut">Sin vincular: no se sincroniza</div></div>
+<button hx-post="/series/{{.SID}}/track/{{.Key}}" hx-target="#trk-{{.Key}}" hx-swap="outerHTML" hx-indicator="this">{{icon "link"}}Vincular</button></div>
+{{if .Cands}}<p class="small mut">¿Cuál es?</p><div class="cstrip">{{range .Cands}}<form hx-post="/series/{{$.SID}}/track/{{$.Key}}" hx-target="#trk-{{$.Key}}" hx-swap="outerHTML"><input type="hidden" name="rid" value="{{.ID}}">
+<button class="cand" title="{{.Title}}"><img loading="lazy" referrerpolicy="no-referrer" src="{{.PicSmall}}" alt=""><b>{{.Title}}</b><span>{{if .Total}}{{.Total}} caps{{else}}en curso{{end}}</span></button></form>{{end}}</div>{{end}}
+{{end}}
+{{if .Err}}<p class="bad small">{{.Err}}</p>{{end}}
+</div>{{end}}
+
+{{define "track_list"}}<div id="mallist">
+<form class="mlbar" hx-get="/track/list" hx-target="#mallist" hx-swap="outerHTML" hx-trigger="change from:find select">
+{{if gt (len .Svcs) 1}}<select name="svc" aria-label="Servicio">{{range .Svcs}}<option value="{{.v}}" {{if eq .v $.Svc}}selected{{end}}>{{.l}}</option>{{end}}</select>{{else if .Svc}}<input type="hidden" name="svc" value="{{.Svc}}">{{end}}
+{{if .Statuses}}<select name="status" aria-label="Lista">{{range .Statuses}}<option value="{{.V}}" {{if eq .V $.Status}}selected{{end}}>{{.L}}</option>{{end}}</select>{{end}}
+{{if .Rows}}<label class="chk small"><input type="checkbox" data-allmal> Todas</label>
+<span class="tip" tabindex="0" data-tip="Marca las series que quieras: cada una se busca sola en tus sources. Elige de qué source añadirla (la coincidencia clara viene ya elegida) y pulsa Añadir abajo.">?</span>{{end}}
+</form>
+{{if .Err}}<p class="bad small">{{.Err}}</p>
+{{else}}{{if .InLib}}<p class="mut small">{{.InLib}} de esta lista ya están en tu biblioteca.</p>{{end}}
+{{if not .Rows}}<p class="mut">Nada que añadir de esta lista.</p>{{end}}
+<table class="pairs mallist">{{range .Rows}}{{template "track_row" (dict "Row" .)}}{{end}}</table>
+{{if .Rows}}<div class="malfoot"><span class="small mut" data-malhint></span>
+<button type="button" class="pri" data-malgo disabled>{{icon "plus"}}<span data-mallbl>Añadir</span></button></div>{{end}}{{end}}
+</div>{{end}}
+
+{{define "track_row"}}{{$r := .Row}}{{$m := $r.M}}<tbody id="trk-{{$r.Svc}}-{{$m.ID}}" data-import="/track/{{$r.Svc}}/import/{{$m.ID}}" {{if $r.Searched}}data-searched{{end}}><tr>
+<td class="mc">{{if not $r.Done}}<input type="checkbox" data-malpick {{if $r.Sel}}checked{{end}} aria-label="Elegir {{$m.Title}}">{{end}}</td>
+<td class="mi"><img loading="lazy" referrerpolicy="no-referrer" src="{{$m.PicSmall}}" alt=""></td>
+<td><b class="ell" title="{{$m.Title}}">{{$m.Title}}</b><span class="mut small ell">{{if $m.Total}}{{$m.Total}} capítulos{{else}}en publicación{{end}}{{if and $m.En (ne $m.En $m.Title)}} · {{$m.En}}{{end}}</span>
+{{if $r.Done}}<span class="ok small pmsg">{{icon "check"}} Añadida desde {{$r.Done}} · <a href="/library/{{$r.SeriesID}}">abrir</a></span>{{end}}
+{{if $r.Err}}<span class="bad small pmsg">{{$r.Err}}</span>{{end}}
+{{if not $r.Done}}<form class="malgo" hx-post="/track/{{$r.Svc}}/search/{{$m.ID}}"><input type="hidden" name="t" value="{{$m.Title}}"></form>{{end}}
+<span class="pairing s">Buscando en tus sources…</span><span class="pairing a">Añadiendo…</span></td></tr>
+{{if and $r.Cands (not $r.Done)}}<tr class="cands"><td colspan="3"><div class="cstrip">{{range $i, $c := $r.Cands}}
+<label class="cand" title="«{{$c.Title}}» de {{$c.SourceName}}"><input type="radio" name="pick-{{$r.Svc}}-{{$m.ID}}" {{if eq $i $r.Picked}}checked{{end}}
+data-source="{{$c.Source}}" data-url="{{$c.URL}}" data-title="{{$c.Title}}" data-memo="{{$c.MemoS}}" data-thumb="{{$c.Thumbnail}}">
+<img loading="lazy" referrerpolicy="no-referrer" src="{{$c.Thumbnail}}" alt=""><b>{{$c.Title}}</b><span>{{$c.SourceName}}</span></label>{{end}}</div>
+{{if lt $r.Picked 0}}<p class="small mut">Sin coincidencia clara: elige cuál es.</p>{{end}}
+{{if $r.Fails}}<p class="mut small">Sin respuesta: {{$r.Fails}}</p>{{end}}</td></tr>{{end}}
+</tbody>{{end}}
+
+{{define "connections"}}<div class="conns">
+<p class="mut small">Sincroniza lo que lees con tus listas y añade series desde ellas.</p>
+{{range .Panels}}<details class="conn" name="conn" id="conn-{{.Key}}">
+<summary><span class="logo" style="--c:{{.Look.c}}">{{.Look.s}}</span><span class="grow"><b>{{.Name}}</b>
+<span class="small {{if .Connected}}ok{{else}}mut{{end}}">{{if .Connected}}Conectado como {{.User}}{{else}}Sin conectar{{end}}</span></span><span class="chev"></span></summary>
+<div class="conn-b">{{template "track_panel" .}}</div></details>{{end}}
+<details class="conn" name="conn" id="conn-notify">
+<summary><span class="logo" style="--c:#3a3a41">{{icon "bell"}}</span><span class="grow"><b>Notificaciones</b>
+<span class="small {{if .Notify}}ok{{else}}mut{{end}}">{{if .Notify}}{{.Notify}} {{if eq .Notify 1}}destino{{else}}destinos{{end}}{{else}}Telegram, ntfy, Discord, Gotify…{{end}}</span></span><span class="chev"></span></summary>
+<div class="conn-b" hx-get="/notify" hx-trigger="load"></div></details>
+<details class="conn" name="conn" id="conn-opds">
+<summary><span class="logo" style="--c:#3a3a41">{{icon "book"}}</span><span class="grow"><b>Apps de lectura</b>
+<span class="small {{if .OPDS}}ok{{else}}mut{{end}}">{{if .OPDS}}OPDS activado{{else}}OPDS desactivado{{end}}</span></span><span class="chev"></span></summary>
+<div class="conn-b" hx-get="/system/opds" hx-trigger="load"></div></details>
+</div>{{end}}
+
+{{define "notify_panel"}}<div class="ntf" hx-target="this" hx-swap="outerHTML">
+{{if .Rows}}<ul class="ntfl">{{range .Rows}}<li><b>{{.Name}}</b> <span class="mut small ell">{{.Label}}</span>
+<span class="grow"></span>
+<button class="tg{{if .Chapters}} on{{end}}" hx-post="/notify/event" hx-vals='{"id":"{{.ID}}","ev":"chapters"}' title="Avisar de capítulos nuevos">Capítulos</button>
+<button class="tg{{if .Alerts}} on{{end}}" hx-post="/notify/event" hx-vals='{"id":"{{.ID}}","ev":"alerts"}' title="Avisar de series paradas, sources que fallan y descargas fallidas">Avisos</button>
+<button class="ib" hx-post="/notify/test" hx-vals='{"id":"{{.ID}}"}' hx-swap="none" title="Mandar un mensaje de prueba">{{icon "zap"}}</button>
+<button class="ib danger" hx-post="/notify/del" hx-vals='{"id":"{{.ID}}"}' title="Quitar">{{icon "x"}}</button></li>{{end}}</ul>{{end}}
+<form class="ntfadd" hx-post="/notify/add" hx-disabled-elt="find button">
+<select name="kind" aria-label="Tipo">{{range .Kinds}}<option value="{{.Key}}">{{.Name}}</option>{{end}}</select>
+<input class="f-telegram" name="telegram_token" placeholder="Token del bot (de @BotFather)" autocomplete="off">
+<input class="f-telegram" name="telegram_chat" placeholder="Chat id (escribe al bot y mira @userinfobot)" autocomplete="off">
+<input class="f-ntfy" name="ntfy_url" placeholder="https://ntfy.sh/mi-tema-secreto">
+<input class="f-discord" name="discord_url" placeholder="URL del webhook (canal → Integraciones)">
+<input class="f-gotify" name="gotify_url" placeholder="https://gotify.midominio">
+<input class="f-gotify" name="gotify_token" placeholder="Token de la aplicación" autocomplete="off">
+<input class="f-webhook" name="webhook_url" placeholder="https://… (recibe un POST con JSON)">
+<button class="pri sm">{{icon "plus"}}Añadir</button>
+</form>
+{{if .Msg}}<p class="ok small">{{.Msg}}</p>{{end}}
+<form class="ntfbase" hx-post="/notify/base"><span class="small mut">Enlaces a</span><input name="base" value="{{.Base}}" hx-post="/notify/base" hx-trigger="change"><span class="tip" tabindex="0" data-tip="La dirección con la que entras a rensaigo: los mensajes llevan un enlace a la serie. Si entras desde fuera de casa, pon esa.">?</span></form>
+</div>{{end}}

@@ -1,0 +1,10 @@
+.git
+.build
+testdata
+host/build
+host/.gradle-home
+host/.gradle
+host/.kotlin
+host/vendor
+rensaigo
+*.db

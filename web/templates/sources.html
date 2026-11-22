@@ -1,0 +1,87 @@
+{{define "sources"}}
+<div class="secbar">
+<h2>Instaladas <span class="mut small">{{len .Sources}}</span></h2>
+<div class="row">
+<button class="ib" hx-post="/sources/refresh" hx-indicator="this" title="Actualizar el índice del repositorio{{if .RepoAt}} (último: {{ago .RepoAt}}){{end}}">{{icon "refresh"}}</button>
+<button class="ib" hx-post="/sources/update-all" hx-indicator="this" title="Actualizar las extensiones instaladas">{{icon "download"}}</button>
+</div>
+</div>
+<ul class="srcgrid" id="installed">
+<li hidden hx-get="/sources" hx-select="#installed" hx-target="#installed" hx-swap="outerHTML" hx-trigger="srcchanged from:body{{if .Busy}}, every 4s{{end}}"></li>
+{{range .Sources}}<li class="{{if not .enabled}}off{{end}}">
+<img class="ico xl" src="/icon/{{.pkg}}" alt="" onerror="this.style.visibility='hidden'">
+<div class="grow">
+<div class="nm">{{if .probing}}<span class="spin" title="Probando…"></span>{{else}}<span class="dot s-{{.status}}" title="{{label .status}}{{if .status_at}} · comprobado {{ago .status_at}}{{end}}{{if and .status_msg (ne .status "ok")}}: {{.status_msg}}{{end}}"></span>{{end}}<b>{{.name}}</b><span class="chip">{{.lang}}</span>{{if .adult}}<span class="chip" title="También busca y descarga en su versión +18">+18</span>{{end}}{{if .js}}<span class="chip" title="Necesita el motor JavaScript">JS</span>{{end}}{{if eq .pinned 1}}<span class="chip lock" title="Fijada en la v{{.version}}: no se actualiza sola">{{icon "lock"}}</span>{{else if and .latest (ne .latest .version)}}<span class="chip upd" title="v{{.version}} → v{{.latest}}: pulsa {{"actualizar"}} arriba">↑</span>{{end}}</div>
+<div class="sub">{{if .nseries}}Indexando {{.nseries}} serie{{if ne .nseries 1}}s{{end}}{{else}}Sin series{{end}}</div>
+{{with .cov}}{{template "cov_chip" .}}{{end}}
+</div>
+<div class="srcacts">
+<button class="switch{{if .enabled}} on{{end}}" hx-post="/sources/{{.id}}/toggle" title="{{if .enabled}}Desactivar{{else}}Activar{{end}}" aria-label="Activar o desactivar"></button>
+<button class="ib" hx-get="/sources/{{.id}}/prefs" hx-target="#modal-body" data-modal="{{.name}} · ajustes" title="Versión{{if eq .has_prefs 1}} y preferencias{{end}}">{{icon "sliders"}}</button>
+<button class="ib" hx-post="/sources/{{.id}}/test" hx-target="#installed" hx-select="#installed" hx-swap="outerHTML" title="Comprobar si funciona" {{if .probing}}disabled{{end}}>{{icon "zap"}}</button>
+<a class="ib" href="{{.base_url}}" rel="noreferrer" target="_blank" title="{{.base_url}}">{{icon "ext"}}</a>
+<button class="ib danger" hx-post="/sources/uninstall" hx-vals='{"pkg":"{{.pkg}}"}' hx-confirm="¿Desinstalar {{.name}}?" title="{{if .nseries}}La usan {{.nseries}} series: quítala de ellas primero{{else}}Desinstalar{{end}}" {{if .nseries}}disabled{{end}}>{{icon "trash"}}</button>
+</div>
+</li>{{else}}<li class="blank mut">Ninguna instalada todavía: elige una de abajo.</li>{{end}}
+</ul>
+
+<div class="secbar">
+<h2>Disponibles</h2>
+<form class="row" hx-get="/sources/repo" hx-target="#repo" hx-swap="outerHTML" hx-trigger="submit, input changed delay:300ms from:find input, change from:find select">
+<input type="search" name="q" placeholder="Buscar…" aria-label="Buscar extensión">
+<select name="js" aria-label="Motor JavaScript"><option value="">Todas</option><option value="no" {{if eq .JS "no"}}selected{{end}}>Sin motor JS</option></select>
+<select name="lang" aria-label="Idioma"><option value="">todos</option>{{range .Langs}}<option {{if eq . $.Lang}}selected{{end}}>{{.}}</option>{{end}}</select>
+<span id="cov" hx-get="/sources/coverage" hx-trigger="load" hx-target="this" hx-swap="outerHTML"></span>
+</form>
+</div>
+{{template "repo_cards" .}}
+{{end}}
+
+{{define "repo_cards"}}<ul class="srcgrid avail" id="repo">
+{{range .Rows}}<li>
+<img class="ico xl" src="/icon/{{.pkg}}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">
+<div class="grow">
+<div class="nm"><b>{{.name}}</b><span class="chip">{{.lang}}</span>{{if eq .nsfw 3}}<span class="chip">+18</span>{{end}}{{if .js}}<span class="chip" title="Necesita el motor JavaScript">JS</span>{{end}}</div>
+<div class="sub">v{{.version}}</div>
+{{with .cov}}{{template "cov_chip" .}}{{else}}<div class="covchip c-none">sin medir</div>{{end}}
+</div>
+<div class="srcacts"><button class="ib" hx-post="/sources/install" hx-vals='{"pkg":"{{.pkg}}"}' hx-indicator="this" title="Instalar (se verifica la firma)">{{icon "plus"}}</button></div>
+</li>{{else}}<li class="blank mut">{{if .HasIndex}}Nada que coincida.{{else}}El índice aún no se ha descargado: pulsa {{icon "refresh"}} arriba.{{end}}</li>{{end}}
+</ul>{{end}}
+
+{{define "source_prefs"}}
+<div id="prefs{{.ID}}" class="prefs">
+{{with .Ver}}<form class="pref ver" hx-post="/sources/{{$.ID}}/version" hx-target="#modal-body">
+<label><b>Versión</b><span class="mut small">{{if .Old}}Si la nueva falla, vuelve a una anterior. Al volver se fija sola.{{else}}Aún no hay versiones anteriores guardadas: se guardan las 2 últimas a partir de la próxima actualización.{{end}}</span></label>
+<div class="row">
+<select name="version" aria-label="Versión"{{if not .Old}} disabled{{end}}><option value="{{.Cur}}" selected>v{{.Cur}} (la de ahora)</option>{{range .Old}}<option value="{{.}}">v{{.}}</option>{{end}}</select>
+<label class="small chk" title="«Actualizar» se la salta"><input type="checkbox" name="pin" value="1" {{if .Pinned}}checked{{end}}> No actualizar</label>
+<button class="sm">Aplicar</button>
+</div>{{if and .Latest (ne .Latest .Cur)}}<span class="mut small">En el repositorio está la v{{.Latest}}.</span>{{end}}</form>{{end}}
+{{with .Adult}}<div class="pref sw">
+<label><b>Contenido +18</b><span class="mut small">Trae aparte su versión +18 (misma web): activada, también busca y descarga ahí.{{if .Used}} Alguna serie ya la usa, así que sigue activa.{{end}}</span></label>
+<button class="switch{{if or .On .Used}} on{{end}}"{{if .Used}} disabled{{end}} hx-post="/sources/{{$.ID}}/prefs" hx-vals='{"key":"rensaigo.adult","value":"{{if .On}}false{{else}}true{{end}}"}' hx-target="#modal-body" title="{{if .On}}Desactivar{{else}}Activar{{end}}" aria-label="Contenido +18"></button>
+</div>{{end}}
+{{if .PrefErr}}<p class="bad small">No se pudieron leer sus preferencias: {{.PrefErr}}</p>
+{{else if and (not .Prefs) (not .Adult)}}<p class="mut">Esta extensión no tiene preferencias.</p>{{end}}
+{{range .Prefs}}{{if .visible}}<form class="pref" hx-post="/sources/{{$.ID}}/prefs" hx-target="#modal-body">
+<input type="hidden" name="key" value="{{.key}}"><input type="hidden" name="type" value="{{.valueType}}">
+<label><b>{{.title}}</b>{{if .summary}}<span class="mut small">{{.summary}}</span>{{end}}</label>
+<div class="row">
+{{if eq .valueType "Boolean"}}<select name="value"><option value="true" {{if .value}}selected{{end}}>sí</option><option value="false" {{if not .value}}selected{{end}}>no</option></select>
+{{else if eq .valueType "Set<String>"}}<span>{{$p := .}}{{range $i, $v := .entryValues}}<label class="small chk"><input type="checkbox" name="value" value="{{$v}}" {{if index $p.selected $v}}checked{{end}}> {{index $p.entries $i}}</label> {{end}}</span>
+{{else if .entryValues}}{{$p := .}}<select name="value">{{range $i, $v := .entryValues}}<option value="{{$v}}" {{if eq $v $p.value}}selected{{end}}>{{index $p.entries $i}}</option>{{end}}</select>
+{{else}}<input type="text" name="value" value="{{.value}}">{{end}}
+<button class="sm" {{if not .enabled}}disabled{{end}}>Guardar</button>{{if eq $.Saved .key}} <span class="chip ok">{{icon "check"}}guardado</span>{{end}}
+</div></form>{{end}}{{end}}
+</div>
+{{end}}
+
+{{define "cov_status"}}<span id="cov" class="cov" hx-target="this" hx-swap="outerHTML"{{if .Running}} hx-get="/sources/coverage?poll=1" hx-trigger="every 3s"{{end}}>
+{{if .Running}}<span class="small mut ell" title="Probando {{.Cur}}"><span class="spin"></span>{{.Done}}/{{.Total}}{{if .Cur}} · {{.Cur}}{{end}}</span>
+<button type="button" class="ib" hx-post="/sources/coverage/stop" hx-target="#cov" hx-swap="outerHTML" title="Parar">{{icon "x"}}</button>
+{{else}}<button type="button" class="ib" hx-post="/sources/coverage" hx-include="closest form" hx-target="#cov" hx-swap="outerHTML" title="Medir cobertura">{{icon "scan"}}</button>
+<span class="tip" tabindex="0" data-tip="Prueba las extensiones de ese idioma una a una contra tu biblioteca: busca en cada una 12 de tus series, mira cuántos capítulos tienen y la resolución de sus páginas, y las ordena de mejor a peor. Se saltan las +18. Las que no tienes se instalan solo para probarlas y se quitan después. Va despacio a propósito (puede tardar un par de horas); puedes cerrar la página. Cada medida vale un mes. Las instaladas se vuelven a medir solas cuando añades series; las demás salen con ↻ hasta que vuelvas a escanear.">?</span>{{end}}
+</span>{{end}}
+
+{{define "cov_chip"}}<div class="covchip c-{{.lvl}}{{if .stale}} stale{{end}}" title="{{if .err}}{{.err}}{{else}}Busca {{.sampled}} de tus series: encuentra {{.found}}{{if .width}}, páginas de {{.width}} px de ancho{{end}}{{if gt .chap_ratio 0.0}}, {{pct100 .chap_ratio}}% de los capítulos{{end}}. Medido {{ago .at}}{{end}}{{if .stale}}. Has añadido series después: vuelve a escanear{{end}}">{{if or .err (not .sampled)}}no responde{{else}}{{.found}} de {{.sampled}}{{if .width}} · {{.width}} px{{end}}{{end}}{{if .stale}}<span class="stl">{{icon "refresh"}}</span>{{end}}</div>{{end}}
