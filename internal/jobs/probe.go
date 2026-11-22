@@ -3,13 +3,58 @@ package jobs
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"image"
 	"os"
 	"path/filepath"
-	"rensaigo/internal/i18n"
 	"time"
 
 	"rensaigo/internal/hostproc"
+	"rensaigo/internal/i18n"
 )
+
+// chapterArg reconstruye el capítulo tal como lo dio la extensión (incluido su memo) para pedir sus páginas.
+// Sample mide la calidad de un manga en un source sin descargarlo: cuántos capítulos tiene, el número del último y
+// el ancho de una página de su último capítulo. Para comparar sources.
+func (e *Engine) Sample(ctx context.Context, sourceID string, m Manga) (chapters int, last float64, width int, err error) {
+	_, chs, err := e.details(ctx, sourceID, m.URL, m.Title, string(m.Memo))
+	if err != nil {
+		return 0, 0, 0, err
+	}
+	if len(chs) == 0 {
+		return 0, 0, 0, nil
+	}
+	best := chs[0]
+	for _, c := range chs {
+		if n := chapterNumber(c); n > last {
+			last, best = n, c
+		}
+	}
+	res, err := e.SourceCall(ctx, sourceID, "pages", map[string]any{"chapter": chapterArg(best.URL, best.Name, best.Scanlator, chapterNumber(best), best.Date, string(best.Memo))})
+	if err != nil {
+		return len(chs), last, 0, nil // los capítulos sí se saben
+	}
+	var pr struct {
+		Pages []map[string]any `json:"pages"`
+	}
+	json.Unmarshal(res, &pr)
+	if len(pr.Pages) == 0 {
+		return len(chs), last, 0, nil
+	}
+	pg := pr.Pages[len(pr.Pages)/2] // una del medio: la primera suele ser créditos o portada
+	tmp := e.Cfg.Path("tmp", fmt.Sprintf("sample-%d.img", time.Now().UnixNano()))
+	defer os.Remove(tmp)
+	if _, err := e.SourceCall(ctx, sourceID, "image", map[string]any{"page": pg, "out": tmp}); err != nil {
+		return len(chs), last, 0, nil
+	}
+	if f, err := os.Open(tmp); err == nil {
+		if cfg, _, err := image.DecodeConfig(f); err == nil {
+			width = cfg.Width
+		}
+		f.Close()
+	}
+	return len(chs), last, width, nil
+}
 
 // ProbeResult: resultado de la cadena completa contra un source, sin tocar la biblioteca
 // (populares -> detalles y capítulos -> páginas -> una imagen). La usa el test de humo.

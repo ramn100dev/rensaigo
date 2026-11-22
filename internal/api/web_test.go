@@ -140,6 +140,8 @@ func newTestEnv(t *testing.T) *testEnv {
 	st.DB.Exec(`INSERT INTO progress(chapter_id,page,done,updated) VALUES(?,1,0,?)`, env.ch, time.Now().Unix())
 	st.DB.Exec(`INSERT INTO tracking(series_id,svc,rid,total,rd) VALUES(?,'mal','1',10,1)`, env.series)
 	st.Set("opds.key", "k3y")
+	// un source cuya extensión aún no está instalada (restaurado de un rensaigo.json en una instalación nueva)
+	st.DB.Exec(`INSERT INTO series_source(series_id,source_id,url,title,priority,temporary) VALUES(?,'999','/x','Test Series',5,1)`, env.series)
 
 	// una serie que ya estaba en disco: se adopta como importada, sin source
 	img := filepath.Join(tmp, "p.png")

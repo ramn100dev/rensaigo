@@ -91,7 +91,7 @@
 {{range .SeriesSources}}<li data-ss="{{.id}}">
 <span class="grip" title="{{t "Arrastrar"}}">{{icon "grip"}}</span>
 <img class="ico" src="/icon/{{.pkg}}" alt="" onerror="this.style.visibility='hidden'">
-<div class="grow"><b>{{.name}}</b> <span class="mut small">{{.lang}}{{if not .enabled}} · {{t "desactivado"}}{{end}}</span> <span class="chip prin">{{t "principal"}}</span>
+<div class="grow"><b>{{.name}}</b> <span class="mut small">{{if eq .status "missing"}}{{label "missing"}}{{else}}{{.lang}}{{if not .enabled}} · {{t "desactivado"}}{{end}}{{end}}</span> <span class="chip prin">{{t "principal"}}</span>
 <div class="small {{if .last_error}}bad{{else}}mut{{end}} ell" title="{{.last_error}}">{{if .last_error}}{{.last_error}}{{else}}<span class="dot s-{{.status}}" title="{{label .status}}"></span>{{ago .last_check}}{{if .width}}<span title="{{t "Ancho de página de lo descargado de aquí"}}"> · {{.width}} px</span>{{else}}<span hx-get="/series/{{$.S.id}}/sswidth?ss={{.id}}" hx-trigger="load" hx-target="this" hx-swap="outerHTML"></span>{{end}}{{end}}</div></div>
 <label class="fromch small" title="{{t "Solo capítulos desde este número. Vacío: todos"}}">{{t "desde"}} <input type="number" name="from" min="0" step="any" value="{{if .from_ch}}{{num .from_ch}}{{end}}" placeholder="1" hx-post="/series/{{$.S.id}}/from" hx-vals='{"ss":"{{.id}}"}' hx-trigger="change"></label>
 <button class="ib danger" hx-post="/series/{{$.S.id}}/unsource" hx-vals='{"ss":"{{.id}}"}' hx-confirm="{{t "¿Quitar este source de la serie?"}}" title="{{t "Quitar source"}}">{{icon "x"}}</button>

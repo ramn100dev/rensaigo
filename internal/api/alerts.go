@@ -4,12 +4,13 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"rensaigo/internal/i18n"
-	"rensaigo/internal/safe"
 	"sort"
 	"strings"
 	"sync"
 	"time"
+
+	"rensaigo/internal/i18n"
+	"rensaigo/internal/safe"
 )
 
 // Avisos fijos de la campana: problemas que siguen ahí hasta que se resuelven o se descartan (series que llevan

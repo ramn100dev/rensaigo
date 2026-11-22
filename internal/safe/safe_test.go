@@ -8,7 +8,7 @@ import (
 )
 
 func TestCallAndGo(t *testing.T) {
-	if err := Call("x", func() error { var m map[string]int; m["a"] = 1; return nil }); err == nil {
+	if err := Call("x", func() error { panic("roto") }); err == nil {
 		t.Error("el pánico debería volver como error")
 	}
 	done := make(chan struct{})

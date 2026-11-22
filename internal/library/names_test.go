@@ -77,3 +77,25 @@ func TestScanOffline(t *testing.T) {
 		t.Fatalf("offline=%v, desaparecidos=%d (esperado 2)", rep.Offline, rep.MissingOnDisk)
 	}
 }
+
+func FuzzSafeName(f *testing.F) {
+	for _, s := range []string{"..", ".", "a/b", "  ", "転生したら", "x\x00y", strings.Repeat("é", 200), "CON", "a\\b:c*?"} {
+		f.Add(s)
+	}
+	f.Fuzz(func(t *testing.T, s string) {
+		n := library.SafeName(s)
+		if n == "" || n == "." || n == ".." || strings.ContainsAny(n, "/\\\x00") || len(n) > 150 {
+			t.Fatalf("SafeName(%q) = %q", s, n)
+		}
+		if utf8.ValidString(s) && !utf8.ValidString(n) {
+			t.Fatalf("SafeName(%q) rompió un carácter: %q", s, n)
+		}
+		if filepath.Base(n) != n {
+			t.Fatalf("SafeName(%q) = %q no es un nombre de un solo nivel", s, n)
+		}
+		c := library.ChapterFile(s, s, s, s, 12.5)
+		if strings.ContainsAny(c, "/\\\x00") || !strings.HasSuffix(c, " 12.5.cbz") {
+			t.Fatalf("ChapterFile con %q = %q", s, c)
+		}
+	})
+}

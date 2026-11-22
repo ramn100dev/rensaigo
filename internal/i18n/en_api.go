@@ -14,6 +14,7 @@ func init() {
 		"requiere JavaScript":          "requires JavaScript",
 		"API de Android no soportada":  "unsupported Android API",
 		"error HTTP":                   "HTTP error",
+		"extensión no instalada":       "extension not installed",
 		"error de red":                 "network error",
 		"error de extensión":           "extension error",
 		"sin probar":                   "untested",
