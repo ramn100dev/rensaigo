@@ -26,6 +26,7 @@ import (
 
 	"rensaigo/internal/i18n"
 	"rensaigo/internal/jobs"
+	"rensaigo/internal/safe"
 	"rensaigo/internal/track"
 )
 
@@ -273,7 +274,7 @@ func (s *Server) link(ctx context.Context, seriesID int64, t track.Service, e *t
 	s.touch(seriesID)
 	s.applyMeta(seriesID, t.Key(), e)
 	s.pull(seriesID, t.Key(), e.MyRead)
-	go s.push(seriesID, t, false)
+	safe.Go("sincronización", func() { s.push(seriesID, t, false) })
 }
 
 // applyMeta: los metadatos del servicio mandan sobre los del source, salvo que haya vinculado otro con más prioridad.

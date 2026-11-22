@@ -31,6 +31,7 @@ import (
 	"rensaigo/internal/jobs"
 	"rensaigo/internal/jsengine"
 	"rensaigo/internal/library"
+	"rensaigo/internal/safe"
 	"rensaigo/internal/store"
 	"rensaigo/internal/track"
 	"rensaigo/web"
@@ -591,7 +592,7 @@ func (s *Server) progress(w http.ResponseWriter, r *http.Request) {
 	s.St.DB.QueryRow(`SELECT series_id FROM chapter WHERE id=?`, ch).Scan(&sid)
 	s.touch(sid)
 	if done == 1 { // capítulo terminado: subir el progreso a MyAnimeList
-		go s.syncSeries(sid, false)
+		safe.Go("sincronización", func() { s.syncSeries(sid, false) })
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -639,6 +640,7 @@ func (s *Server) seriesSearch(w http.ResponseWriter, r *http.Request) {
 		wg.Add(1)
 		go func(i int, src M) {
 			defer wg.Done()
+			defer safe.Recover("búsqueda")
 			sem <- struct{}{}
 			defer func() { <-sem }()
 			ctx, cancel := context.WithTimeout(r.Context(), 90*time.Second)
@@ -751,10 +753,10 @@ func (s *Server) chapterRead(w http.ResponseWriter, r *http.Request) {
 	if r.FormValue("done") == "1" {
 		s.St.DB.Exec(`INSERT INTO progress(chapter_id,page,done,updated) VALUES(?,0,1,?)
 			ON CONFLICT(chapter_id) DO UPDATE SET done=1, updated=excluded.updated`, id, time.Now().Unix())
-		go s.syncSeries(sid, false)
+		safe.Go("sincronización", func() { s.syncSeries(sid, false) })
 	} else {
 		s.St.DB.Exec(`DELETE FROM progress WHERE chapter_id=?`, id)
-		go s.syncSeries(sid, true) // desmarcar a mano sí baja el contador del servicio
+		safe.Go("sincronización", func() { s.syncSeries(sid, true) }) // desmarcar a mano sí baja el contador del servicio
 	}
 	s.seriesChaptersFor(w, sid)
 }
@@ -829,7 +831,7 @@ func (s *Server) seriesAction(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		if err = s.Eng.SetOrder(id, ids); err == nil {
-			go s.Eng.CheckSeries(context.Background(), id)
+			safe.Go("comprobación", func() { s.Eng.CheckSeries(context.Background(), id) })
 		}
 	case "unsource":
 		ssid, _ := strconv.ParseInt(r.FormValue("ss"), 10, 64)
@@ -837,7 +839,7 @@ func (s *Server) seriesAction(w http.ResponseWriter, r *http.Request) {
 		s.St.DB.Exec(`DELETE FROM chapter WHERE series_source_id=? AND state<>'downloaded'`, ssid)
 		if _, err = s.St.DB.Exec(`DELETE FROM series_source WHERE id=? AND series_id=?`, ssid, id); err == nil {
 			s.Eng.NormSources(id)
-			go s.Eng.CheckSeries(context.Background(), id) // lo pendiente que tenía puede estar en otro
+			safe.Go("comprobación", func() { s.Eng.CheckSeries(context.Background(), id) }) // lo pendiente que tenía puede estar en otro
 		}
 	case "from": // el source solo aporta capítulos desde este número
 		ssid, _ := strconv.ParseInt(r.FormValue("ss"), 10, 64)
@@ -851,7 +853,7 @@ func (s *Server) seriesAction(w http.ResponseWriter, r *http.Request) {
 			// y las sustituciones pendientes desde él por debajo se cancelan (el archivo que hay se queda)
 			s.St.DB.Exec(`UPDATE chapter SET upg=0, attempts=0, error='' WHERE series_source_id=? AND upg=1 AND number>=0 AND number<?`, ssid, from)
 		}
-		go s.Eng.CheckSeries(context.Background(), id)
+		safe.Go("comprobación", func() { s.Eng.CheckSeries(context.Background(), id) })
 	case "delete": // quita la serie Y BORRA su carpeta de la biblioteca
 		if err = s.deleteSeries(id); err == nil {
 			if card {

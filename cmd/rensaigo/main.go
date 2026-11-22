@@ -25,6 +25,7 @@ import (
 	"rensaigo/internal/jsengine"
 	"rensaigo/internal/library"
 	"rensaigo/internal/logx"
+	"rensaigo/internal/safe"
 	"rensaigo/internal/store"
 )
 
@@ -144,17 +145,17 @@ func main() {
 		log.Fatalf("plantillas: %v", err)
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	go srv.QuickScan(true) // una instalación nueva sobre una biblioteca existente no aparece vacía
-	go eng.Run(ctx)
-	go srv.TrackLoop(ctx)
-	eng.OnChange = srv.Touch
+	eng.OnChange = srv.Touch // antes de arrancar el motor: lo leen sus gorutinas
 	eng.OnDownloaded = srv.OnDownloaded
-	go srv.NotifyLoop(ctx)
-	go srv.SidecarLoop(ctx)
-	go srv.CoverageLoop(ctx)
-	go backups(ctx, cfg, st)
-	go extUpdates(ctx, cfg, st, repo)
+	ctx, cancel := context.WithCancel(context.Background())
+	safe.Go("escaneo", func() { srv.QuickScan(true) }) // una instalación nueva sobre una biblioteca existente no aparece vacía
+	go eng.Run(ctx)                                    // planificador y cola, cada uno se rearranca solo si falla
+	go safe.Loop(ctx, "seguimiento", srv.TrackLoop)
+	go safe.Loop(ctx, "avisos", srv.NotifyLoop)
+	go safe.Loop(ctx, "rensaigo.json", srv.SidecarLoop)
+	go safe.Loop(ctx, "cobertura", srv.CoverageLoop)
+	go safe.Loop(ctx, "copias de la BD", func(ctx context.Context) { backups(ctx, cfg, st) })
+	go safe.Loop(ctx, "actualización de extensiones", func(ctx context.Context) { extUpdates(ctx, cfg, st, repo) })
 
 	hs := &http.Server{Addr: cfg.Addr, Handler: srv.Handler(), ReadHeaderTimeout: 10 * time.Second}
 	go func() {

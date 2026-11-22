@@ -25,17 +25,27 @@ import (
 	_ "golang.org/x/image/webp"
 
 	"rensaigo/internal/config"
-	"rensaigo/internal/extrepo"
 	"rensaigo/internal/hostproc"
 	"rensaigo/internal/library"
+	"rensaigo/internal/safe"
 	"rensaigo/internal/store"
 )
+
+// Host ejecuta una operación de una extensión (el host JVM; en los tests, uno falso).
+type Host interface {
+	CallJar(ctx context.Context, jar, op string, args map[string]any) (json.RawMessage, error)
+}
+
+// Jars dice qué jar (ya verificado) tiene cada source.
+type Jars interface {
+	JarFor(sourceID string) (string, error)
+}
 
 type Engine struct {
 	Cfg  *config.Config
 	St   *store.Store
-	Host *hostproc.Supervisor
-	Repo *extrepo.Repo
+	Host Host
+	Repo Jars
 
 	wake chan struct{}
 	mu   sync.Mutex
@@ -99,7 +109,7 @@ type limiter struct {
 	next time.Time
 }
 
-func New(cfg *config.Config, st *store.Store, host *hostproc.Supervisor, repo *extrepo.Repo) *Engine {
+func New(cfg *config.Config, st *store.Store, host Host, repo Jars) *Engine {
 	return &Engine{Cfg: cfg, St: st, Host: host, Repo: repo, wake: make(chan struct{}, 1),
 		active: map[int64]*Active{}, srcBusy: map[string]int{}, lim: map[string]*limiter{}}
 }
@@ -565,8 +575,8 @@ func (e *Engine) Recover() {
 
 // Run arranca planificador y cola. Termina cuando se cancela el contexto.
 func (e *Engine) Run(ctx context.Context) {
-	go e.scheduler(ctx)
-	e.dispatcher(ctx)
+	go safe.Loop(ctx, "planificador", e.scheduler)
+	safe.Loop(ctx, "cola de descargas", e.dispatcher)
 }
 
 func (e *Engine) scheduler(ctx context.Context) {
@@ -719,7 +729,7 @@ func (e *Engine) dispatch(ctx context.Context) {
 				e.St.DB.Exec(`UPDATE chapter SET state='downloading' WHERE id=?`, c.id)
 			}
 			go func(id int64, source string, a *Active) {
-				err := e.download(dctx, id, a)
+				err := safe.Call("descarga", func() error { return e.download(dctx, id, a) })
 				cancelled := dctx.Err() != nil
 				dcancel()
 				e.mu.Lock()
@@ -759,7 +769,10 @@ func (e *Engine) fail(id int64, err error) {
 	if delay > 6*time.Hour {
 		delay = 6 * time.Hour
 	}
-	if hostproc.Kind(err) == "host" { // el host se cayó: no es culpa del source, se reintenta enseguida
+	// el host se cayó (o no arrancó): no es culpa del source, se reintenta enseguida. Ojo: hostproc.Kind da «host»
+	// también para cualquier error que no venga del host (p. ej. «el source no devolvió páginas»), y esos sí
+	// tienen que esperar cada vez más
+	if he := (*hostproc.Error)(nil); errors.As(err, &he) && he.Kind == "host" {
 		delay = 3 * time.Second
 	}
 	if upg == 1 {
@@ -792,7 +805,9 @@ func (e *Engine) download(ctx context.Context, id int64, a *Active) error {
 		FROM chapter c JOIN series s ON s.id=c.series_id JOIN series_source ss ON ss.id=c.series_source_id JOIN source src ON src.id=ss.source_id
 		WHERE c.id=?`, id).Scan(&seriesID, &number, &name, &url, &webURL, &scanlator, &dateUpload,
 		&sTitle, &sPath, &author, &artist, &genre, &desc, &sourceID, &srcName, &lang, &memo, &oldCbz)
-	if err != nil {
+	if err == sql.ErrNoRows {
+		return errGone // se borró (o se quitó su source) justo antes de empezar
+	} else if err != nil {
 		return err
 	}
 	tmp := e.Cfg.Path("tmp", fmt.Sprintf("ch-%d", id))
@@ -830,6 +845,7 @@ func (e *Engine) download(ctx context.Context, id int64, a *Active) error {
 		wg.Add(1)
 		go func(i int, pg map[string]any) {
 			defer wg.Done()
+			defer safe.Recover("página")
 			select {
 			case sem <- struct{}{}:
 				defer func() { <-sem }()

@@ -16,6 +16,7 @@ import (
 
 	"rensaigo/internal/i18n"
 	"rensaigo/internal/library"
+	"rensaigo/internal/safe"
 )
 
 // OPDS 1.2 para leer la biblioteca desde otras apps (Panels, Chunky, KOReader, Moon+ Reader…). Va con una clave
@@ -133,11 +134,11 @@ func (f *feed) series(rows []M) {
 		if a := x["author"]; a != nil && a != "" {
 			fmt.Fprintf(&f.b, `<author><name>%s</name></author>`, esc(a))
 		}
-		fmt.Fprintf(&f.b, `<content type="text">%d capítulos · %d leídos</content>
+		fmt.Fprintf(&f.b, `<content type="text">%s</content>
 <link rel="subsection" href="%s/series/%d" type="%s"/>
 <link rel="http://opds-spec.org/image" href="%s/thumb/%d" type="image/jpeg"/>
 <link rel="http://opds-spec.org/image/thumbnail" href="%s/thumb/%d" type="image/jpeg"/></entry>
-`, x["n"], x["rd"], f.base, x["id"], opdsAcq, f.base, x["id"], f.base, x["id"])
+`, esc(i18n.Tf("%d capítulos · %d leídos", x["n"], x["rd"])), f.base, x["id"], opdsAcq, f.base, x["id"], f.base, x["id"])
 	}
 }
 
@@ -278,7 +279,7 @@ func (s *Server) opdsPage(w http.ResponseWriter, r *http.Request, _ string) {
 		if k, _ := res.RowsAffected(); k > 0 {
 			s.touch(sid)
 			if done == 1 {
-				go s.syncSeries(sid, false)
+				safe.Go("sincronización", func() { s.syncSeries(sid, false) })
 			}
 		}
 	}

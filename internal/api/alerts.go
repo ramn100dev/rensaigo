@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"rensaigo/internal/i18n"
+	"rensaigo/internal/safe"
 	"sort"
 	"strings"
 	"sync"
@@ -258,12 +259,12 @@ func (s *Server) alertAction(w http.ResponseWriter, r *http.Request) {
 		case "check":
 			var sid int64
 			fmt.Sscanf(a.Href, "/library/%d", &sid)
-			go func() {
+			safe.Go("comprobación", func() {
 				ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 				defer cancel()
 				s.Eng.CheckSeries(ctx, sid)
 				s.dropAlertCache()
-			}()
+			})
 			setToast(w, i18n.T("Comprobando…"))
 		case "retry":
 			var sid int64

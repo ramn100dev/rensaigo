@@ -53,7 +53,7 @@
 
 {{define "track_list"}}<div id="mallist">
 <form class="mlbar" hx-get="/track/list" hx-target="#mallist" hx-swap="outerHTML" hx-trigger="change from:find select">
-{{if gt (len .Svcs) 1}}<select name="svc" aria-label="{{t "Servicio"}}">{{range .Svcs}}<option value="{{.v}}" {{if eq .v $.Svc}}selected{{end}}>{{.l}}</option>{{end}}</select>{{else if .Svc}}<input type="hidden" name="svc" value="{{.Svc}}">{{end}}
+{{if and .Svcs (gt (len .Svcs) 1)}}<select name="svc" aria-label="{{t "Servicio"}}">{{range .Svcs}}<option value="{{.v}}" {{if eq .v $.Svc}}selected{{end}}>{{.l}}</option>{{end}}</select>{{else if .Svc}}<input type="hidden" name="svc" value="{{.Svc}}">{{end}}
 {{if .Statuses}}<select name="status" aria-label="{{t "Lista"}}">{{range .Statuses}}<option value="{{.V}}" {{if eq .V $.Status}}selected{{end}}>{{.L}}</option>{{end}}</select>{{end}}
 {{if .Rows}}<label class="chk small"><input type="checkbox" data-allmal> {{t "Todas"}}</label>
 <span class="tip" tabindex="0" data-tip="{{t "Marca las series que quieras: cada una se busca sola en tus sources. Elige de qué source añadirla (la coincidencia clara viene ya elegida) y pulsa Añadir abajo."}}">?</span>{{end}}

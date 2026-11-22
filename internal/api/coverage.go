@@ -11,6 +11,7 @@ import (
 
 	"rensaigo/internal/i18n"
 	"rensaigo/internal/jobs"
+	"rensaigo/internal/safe"
 )
 
 // Cobertura: qué tal le va a cada extensión con TU biblioteca. Se prueban una a una, en segundo plano y sin prisa:
@@ -118,7 +119,7 @@ func (s *Server) covStart(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithCancel(context.Background())
 	c.running, c.cancel, c.lang, c.done, c.total, c.cur = true, cancel, lang, 0, len(pkgs), ""
 	c.mu.Unlock()
-	go s.covRun(ctx, lang, pkgs, titles)
+	safe.Go("cobertura", func() { s.covRun(ctx, lang, pkgs, titles) })
 	s.covStatus(w, r)
 }
 

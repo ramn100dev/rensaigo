@@ -11,5 +11,6 @@ func init() {
 		"Buscar: %s":                    "Search: %s",
 		"Buscar series":                 "Search series",
 		"sin leer":                      "unread",
+		"%d capítulos · %d leídos":      "%d chapters · %d read",
 	})
 }

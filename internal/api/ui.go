@@ -21,6 +21,7 @@ import (
 	"rensaigo/internal/i18n"
 	"rensaigo/internal/jobs"
 	"rensaigo/internal/library"
+	"rensaigo/internal/safe"
 )
 
 // icon pinta un icono del sprite que va en el layout (#i-<nombre>).
@@ -543,6 +544,7 @@ func (s *Server) probeSource(id string) {
 	s.probeMu.Unlock()
 	go func() {
 		defer func() { s.probeMu.Lock(); delete(s.probing, id); s.probeMu.Unlock() }()
+		defer safe.Recover("prueba de source")
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 		defer cancel()
 		var status string
@@ -603,6 +605,7 @@ func (s *Server) searchAll(ctx context.Context, titles []string) ([]cand, []stri
 		wg.Add(1)
 		go func(sid, name string) {
 			defer wg.Done()
+			defer safe.Recover("búsqueda")
 			sem <- struct{}{}
 			defer func() { <-sem }()
 			seen := map[string]bool{}
