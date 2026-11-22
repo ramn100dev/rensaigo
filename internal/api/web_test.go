@@ -39,7 +39,11 @@ var tinyPNG = func() []byte {
 func (webHost) CallJar(ctx context.Context, jar, op string, args map[string]any) (json.RawMessage, error) {
 	switch op {
 	case "search", "popular":
-		return json.Marshal(M{"mangas": []M{{"url": "/m", "title": "Test Series"}, {"url": "/n", "title": "Another One"}}})
+		ms := []M{{"url": "/m", "title": "Test Series"}, {"url": "/n", "title": "Another One"}}
+		if q, _ := args["query"].(string); strings.EqualFold(q, "old one") {
+			ms = append(ms, M{"url": "/old", "title": "Old One"})
+		}
+		return json.Marshal(M{"mangas": ms})
 	case "details":
 		var cs []M
 		for i := 1; i <= 3; i++ {

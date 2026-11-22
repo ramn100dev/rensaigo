@@ -415,6 +415,11 @@ func (s *Supervisor) call(ctx context.Context, p *proc, op string, args map[stri
 		p.pmu.Lock()
 		delete(p.pending, id)
 		p.pmu.Unlock()
+		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			// el host sigue vivo: la web no contestó a tiempo. Es un fallo de red, no del host (así la descarga
+			// espera cada vez más en vez de reintentar cada 3 s, y el source no se marca como roto)
+			return nil, &Error{Kind: "network", Message: i18n.Tf("tiempo de espera agotado (%s)", op)}
+		}
 		return nil, &Error{Kind: "host", Message: i18n.Tf("tiempo de espera agotado (%s)", op)}
 	}
 }
