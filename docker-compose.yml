@@ -11,7 +11,7 @@ services:
     environment:
       RENSAIGO_FLARESOLVERR_URL: "http://flaresolverr:8191"  # empty = no Cloudflare solving
       # RENSAIGO_PASSWORD: "change-me"                       # single password; empty = no login
-      TZ: "Europe/Madrid"
+      TZ: "Etc/UTC"                                         # your time zone, e.g. Europe/Madrid
     volumes:
       - config:/config                                  # database, extensions, logs, backups, secret.key
       - ${LIBRARY:-./library}:/library                  # <Category>/<Series>/*.cbz
@@ -23,7 +23,7 @@ services:
     container_name: flaresolverr
     restart: unless-stopped
     environment:
-      TZ: "Europe/Madrid"
+      TZ: "Etc/UTC"
 
 volumes:
   config:

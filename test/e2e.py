@@ -2,7 +2,7 @@
 """Prueba de extremo a extremo contra un rensaigo en marcha.
 Cadena por source: buscar -> seguir -> comprobar capítulos -> descargar uno -> aparece en biblioteca -> se lee en el lector.
 Uso: e2e.py [--base http://127.0.0.1:9840] [--library DIR] [--pkgs a,b] [--out fichero.json]"""
-import argparse, json, os, sys, time, urllib.parse, urllib.request, zipfile
+import argparse, json, os, re, sys, time, urllib.parse, urllib.request, zipfile
 
 ap = argparse.ArgumentParser()
 ap.add_argument('--base', default='http://127.0.0.1:9842')
@@ -51,7 +51,8 @@ for short in a.pkgs.split(','):
     st, _, b = req('/sources/install', {'pkg': pkg})
     if not step(f'{short}: instalar (firma del jar verificada)', st == 200, b.decode(errors='replace') if st != 200 else f'{time.time()-t0:.1f}s'): continue
     _, srcs = get_json('/api/sources')
-    mine = [s for s in srcs if s['pkg'] == pkg]
+    # de una extensión con varios idiomas, el activo (al instalar solo se activa el preferido)
+    mine = sorted([s for s in srcs if s['pkg'] == pkg], key=lambda s: -s['enabled'])
     if not step(f'{short}: source registrado', mine): continue
     sid = mine[0]['id']; r['source'] = mine[0]['name']
     t0 = time.time(); st, pop = get_json('/api/search?' + urllib.parse.urlencode({'source': sid, 'q': ''}))
@@ -62,9 +63,10 @@ for short in a.pkgs.split(','):
     step(f'{short}: buscar «{word}»', st == 200 and found, found if st != 200 else f'{len(found)} resultados en {time.time()-t0:.1f}s')
     t0 = time.time()
     st, h, b = req('/series/follow', {'source': sid, 'url': m['url'], 'title': m['title'], 'thumbnail': m.get('thumbnail') or '', 'category': a.category, 'auto': '0', 'memo': json.dumps(m['memo']) if m.get('memo') else ''})
-    loc = h.get('HX-Redirect') or h.get('Location') or ''
-    if not step(f'{short}: seguir «{m["title"]}»', loc.startswith('/series/'), b.decode(errors='replace') if not loc else f'{time.time()-t0:.1f}s'): continue
-    series = int(loc.rsplit('/', 1)[1]); r['series'] = series; r['title'] = m['title']
+    # la búsqueda de la biblioteca añade la serie sin salir de la página: la respuesta es su tarjeta «añadida»
+    ids = [x['id'] for x in get_json('/api/series')[1] if x['title'] == m['title'].strip()]
+    if not step(f'{short}: seguir «{m["title"]}»', st == 200 and ids, b.decode(errors='replace')[:300] if not ids else f'{time.time()-t0:.1f}s'): continue
+    series = ids[0]; r['series'] = series; r['title'] = m['title']
     _, chs = get_json(f'/api/chapters?series={series}')
     r['chapters'] = len(chs)
     if not step(f'{short}: comprobar capítulos', chs, f'{len(chs)} capítulos'): continue
@@ -103,12 +105,12 @@ for short in a.pkgs.split(','):
     step(f'{short}: páginas servidas desde el CBZ', oks == cur['pages'], f'{oks}/{cur["pages"]}')
     st, h, b = req(f'/thumb/{series}'); step(f'{short}: miniatura', st == 200 and b[:2] == b'\xff\xd8', h.get('Content-Type'))
     st, _, _ = req('/api/progress', {'chapter': ch['id'], 'page': 2, 'done': 0})
-    st2, _, b = req(f'/library/{series}')
-    step(f'{short}: progreso de lectura guardado', st == 204 and b'class="bar"' in b)
+    st2, _, b = req(f'/read/{ch["id"]}')  # el lector vuelve a abrir por la página guardada
+    step(f'{short}: progreso de lectura guardado', st == 204 and re.search(rb'start:\s*2\b', b) is not None)
     r['ok'] = all(s['ok'] for s in res['steps'] if s['step'].startswith(short + ':'))
 
 # vista unificada y pestañas fusionadas
-st, _, b = req('/library'); step('UI: biblioteca unificada (tarjetas con estado de sources, búsqueda y menú)', st == 200 and b'data-id=' in b and b'class="srcs' in b and b'id="ctx"' in b and b'/series/search' in b and b'id="queue"' in b)
+st, _, b = req('/library'); step('UI: biblioteca unificada (tarjetas, búsqueda en sources, acciones y descargas en la cabecera)', st == 200 and b'data-id=' in b and b'data-act=' in b and b'/series/search' in b and b'/hdr/pill' in b)
 step('UI: solo quedan las pestañas Biblioteca, Sources y Sistema', b'href="/import"' not in b and b'href="/series"' not in b and b'href="/sources"' in b and b'href="/system"' in b)
 st, h, _ = req('/series'); step('UI: /series redirige a la biblioteca', st == 303 and h.get('Location') == '/library')
 st, h, _ = req('/import'); step('UI: /import redirige a Sistema', st == 303 and (h.get('Location') or '').startswith('/system'))

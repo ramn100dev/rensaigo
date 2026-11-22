@@ -7,7 +7,10 @@
 <button class="pri add" data-open-add>{{icon "plus"}}{{t "Añadir"}}</button>
 </div>
 
-{{if not .Series}}<div class="blank"><h2>{{t "La biblioteca está vacía"}}</h2><p class="mut">{{t "Añade una serie desde un source o copia tu biblioteca en la carpeta de datos: se adopta sola al entrar aquí."}}</p></div>{{end}}
+{{if not .Series}}<div class="blank"><h2>{{t "La biblioteca está vacía"}}</h2>
+{{if .Sources}}<p class="mut">{{t "Pulsa «Añadir» para buscar una serie en tus sources, o copia tu biblioteca en la carpeta de datos: se adopta sola al entrar aquí."}}</p>
+{{else}}<p class="mut">{{t "Primero instala uno o varios sources (las webs de donde se descargan los capítulos). Si ya tienes una biblioteca, cópiala en la carpeta de datos: se adopta sola al entrar aquí."}}</p>
+<p><a class="btn pri" href="/sources">{{icon "globe"}}{{t "Instalar sources"}}</a></p>{{end}}</div>{{end}}
 <div class="grid" id="grid">{{range .Series}}{{template "card" .}}{{end}}</div>
 <p class="blank mut" id="nomatch" hidden>{{t "Ninguna serie coincide con los filtros."}}</p>
 

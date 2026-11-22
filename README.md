@@ -54,7 +54,7 @@ docker compose up -d
 
 Open `http://<server>:9840`. Then:
 
-1. **Sources** → install the extensions you want (the index of the default repository is already loaded).
+1. **Sources** → install the extensions you want (the extension index downloads by itself the first time).
 2. **Library** → **Add** → search a title in your sources and follow it.
 3. Already have a library? **Settings → Import** adopts the CBZ files under `/library/<Category>/<Series>/`.
 
@@ -65,12 +65,13 @@ The library folder must be writable by the container user (`1000:1000` by defaul
 ```sh
 docker run -d --name rensaigo --restart unless-stopped \
   -p 9840:9840 \
-  -e RENSAIGO_FLARESOLVERR_URL=http://flaresolverr:8191 \
   -v rensaigo-config:/config \
   -v /path/to/manga:/library \
   --user 1000:1000 \
   ghcr.io/ramn100dev/rensaigo:latest
 ```
+
+Without FlareSolverr, sites behind Cloudflare won't work; if you run it, add `-e RENSAIGO_FLARESOLVERR_URL=http://<host>:8191`.
 
 ## Configuration
 

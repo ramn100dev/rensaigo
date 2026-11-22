@@ -55,7 +55,7 @@ docker compose up -d
 
 Abre `http://<servidor>:9840`. Después:
 
-1. **Sources** → instala las extensiones que quieras (el índice del repositorio por defecto ya viene cargado).
+1. **Sources** → instala las extensiones que quieras (el índice de extensiones se descarga solo la primera vez).
 2. **Biblioteca** → **Añadir** → busca un título en tus sources y síguelo.
 3. ¿Ya tienes biblioteca? **Ajustes → Importar** adopta los CBZ de `/library/<Categoría>/<Serie>/`.
 
@@ -66,12 +66,13 @@ La carpeta de la biblioteca tiene que poder escribirla el usuario del contenedor
 ```sh
 docker run -d --name rensaigo --restart unless-stopped \
   -p 9840:9840 \
-  -e RENSAIGO_FLARESOLVERR_URL=http://flaresolverr:8191 \
   -v rensaigo-config:/config \
   -v /ruta/a/tus/mangas:/library \
   --user 1000:1000 \
   ghcr.io/ramn100dev/rensaigo:latest
 ```
+
+Sin FlareSolverr no funcionan las webs que están tras Cloudflare; si lo tienes, añade `-e RENSAIGO_FLARESOLVERR_URL=http://<host>:8191`.
 
 ## Configuración
 

@@ -46,7 +46,7 @@
 {{with .cov}}{{template "cov_chip" .}}{{else}}<div class="covchip c-none">{{t "sin medir"}}</div>{{end}}
 </div>
 <div class="srcacts"><button class="ib" hx-post="/sources/install" hx-vals='{"pkg":"{{.pkg}}"}' hx-indicator="this" title="{{t "Instalar (se verifica la firma)"}}">{{icon "plus"}}</button></div>
-</li>{{else}}<li class="blank mut">{{if .HasIndex}}{{t "Nada que coincida."}}{{else}}{{t "El índice aún no se ha descargado: pulsa"}} {{icon "refresh"}} {{t "arriba."}}{{end}}</li>{{end}}
+</li>{{else}}<li class="blank mut">{{if .HasIndex}}{{t "Nada que coincida."}}{{else}}<span hx-post="/sources/refresh" hx-trigger="load" hx-swap="none"><span class="spin"></span>{{t "Descargando el índice de extensiones…"}}</span>{{end}}</li>{{end}}
 </ul>{{end}}
 
 {{define "source_prefs"}}
