@@ -189,6 +189,11 @@ func (s *Store) Backup(dir string, keep int) (string, error) {
 		os.Remove(entries[0])
 		entries = entries[1:]
 	}
+	// las de cuando se llamaba rensaio-lite: ya hay una nueva
+	olds, _ := filepath.Glob(filepath.Join(dir, "rensaio-lite-*.db"))
+	for _, o := range olds {
+		os.Remove(o)
+	}
 	// restos de un backup interrumpido
 	tmps, _ := filepath.Glob(filepath.Join(dir, "*.tmp"))
 	for _, t := range tmps {

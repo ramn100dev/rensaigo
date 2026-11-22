@@ -481,8 +481,10 @@ label.cand:has(:focus-visible){outline:2px solid var(--acc);outline-offset:2px}
 .ntfl{list-style:none;margin:0;padding:0;border:1px solid var(--line);border-radius:var(--r-sm)}
 .ntfl li{display:flex;align-items:center;gap:.45rem;padding:.45rem .6rem;border-bottom:1px solid var(--line);min-width:0}
 .ntfl li:last-child{border-bottom:0}
-.ntf .tg{padding:.12rem .55rem;border:1px solid var(--line2);border-radius:var(--r-sm);background:none;color:var(--dim);font-size:.8rem}
-.ntf .tg.on{border-color:var(--fg);color:var(--fg);background:var(--raise)}
+.tgs{display:flex;flex-wrap:wrap;gap:.35rem}
+.ntf .tg,.tgs .tg{padding:.12rem .55rem;border:1px solid var(--line2);border-radius:var(--r-sm);background:none;color:var(--dim);font-size:.8rem}
+.tgs .tg:disabled{cursor:default;opacity:.75}
+.ntf .tg.on,.tgs .tg.on{border-color:var(--fg);color:var(--fg);background:var(--raise)}
 .ntfadd{display:flex;flex-wrap:wrap;gap:.45rem;align-items:center}
 .ntfadd input{flex:1 1 12rem;min-width:0}
 .ntfadd [class^="f-"]{display:none}

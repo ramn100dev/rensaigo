@@ -49,6 +49,7 @@ type Server struct {
 
 	scanMu   sync.Mutex
 	lastScan time.Time
+	offline  bool // el último escaneo no encontró la biblioteca (disco desmontado)
 
 	Trk        []track.Service // por orden de prioridad para los metadatos
 	importSlot chan struct{}   // búsquedas/importaciones desde listas en curso (como mucho 2)
@@ -79,6 +80,10 @@ func (s *Server) QuickScan(force bool) *library.Report {
 	}
 	b, _ := json.Marshal(rep)
 	s.St.Set("last_import", string(b))
+	if rep.Offline && !s.offline { // se avisa una vez, no en cada escaneo
+		s.St.Event("biblioteca", "no se encuentran casi ninguno de los archivos de %s: ¿el disco está desmontado? No se ha cambiado nada", s.Cfg.LibraryDir)
+	}
+	s.offline = rep.Offline
 	if rep.SeriesNew > 0 || rep.ChaptersNew > 0 || rep.MissingOnDisk > 0 {
 		s.St.Event("biblioteca", "escaneo: %d series y %d capítulos nuevos adoptados del disco, %d desaparecidos (%d ms)",
 			rep.SeriesNew, rep.ChaptersNew, rep.MissingOnDisk, rep.DurationMillis)
@@ -374,6 +379,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /sources/{id}/prefs", s.sourcePrefs)
 	mux.HandleFunc("POST /sources/{id}/prefs", s.sourcePrefSet)
 	mux.HandleFunc("POST /sources/{id}/version", s.sourceVersion)
+	mux.HandleFunc("POST /sources/{id}/lang", s.sourceLang)
 	mux.HandleFunc("POST /downloads/pause", s.downloadsPause)
 	mux.HandleFunc("POST /sources/update-all", s.sourcesUpdateAll)
 
@@ -428,7 +434,9 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/events", func(w http.ResponseWriter, r *http.Request) {
 		s.json(w, s.rows(`SELECT at, kind, msg FROM event ORDER BY id DESC LIMIT 100`))
 	})
-	return s.auth(mux)
+	// formularios enviados desde otra web (CSRF): sin contraseña, cualquier página que visites podría, p. ej., borrar
+	// una serie con un POST a esta dirección. Las peticiones de otro origen que cambian algo se rechazan.
+	return http.NewCrossOriginProtection().Handler(s.auth(mux))
 }
 
 func cacheStatic(h http.Handler) http.Handler {
@@ -498,7 +506,7 @@ func (s *Server) librarySeries(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) reader(w http.ResponseWriter, r *http.Request) {
 	id := pathInt(r, "id")
-	c := s.row(`SELECT c.id, c.series_id, c.number, c.name, c.pages, s.title, coalesce(p.page,0) AS page, coalesce(p.done,0) AS done
+	c := s.row(`SELECT c.id, c.series_id, c.number, c.name, c.pages, c.cbz_mtime, s.title, coalesce(p.page,0) AS page, coalesce(p.done,0) AS done
 		FROM chapter c JOIN series s ON s.id=c.series_id LEFT JOIN progress p ON p.chapter_id=c.id WHERE c.id=? AND c.state='downloaded'`, id)
 	if c == nil {
 		http.NotFound(w, r)
@@ -544,7 +552,7 @@ func (s *Server) pageImage(w http.ResponseWriter, r *http.Request) {
 	io.Copy(w, rc)
 }
 
-const placeholder = `<svg xmlns="http://www.w3.org/2000/svg" width="300" height="430"><rect width="100%" height="100%" fill="#262a33"/><text x="50%" y="50%" fill="#778" font-family="sans-serif" font-size="20" text-anchor="middle">sin portada</text></svg>`
+const placeholder = `<svg xmlns="http://www.w3.org/2000/svg" width="300" height="430"><rect width="100%%" height="100%%" fill="#262a33"/><text x="50%%" y="50%%" fill="#778" font-family="sans-serif" font-size="20" text-anchor="middle">%s</text></svg>`
 
 func (s *Server) thumb(w http.ResponseWriter, r *http.Request) {
 	id := pathInt(r, "id")
@@ -562,7 +570,7 @@ func (s *Server) thumb(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "image/svg+xml")
 	w.Header().Set("Cache-Control", "no-cache")
-	io.WriteString(w, placeholder)
+	fmt.Fprintf(w, placeholder, template.HTMLEscapeString(i18n.T("sin portada")))
 }
 
 func (s *Server) progress(w http.ResponseWriter, r *http.Request) {
@@ -782,7 +790,7 @@ func (s *Server) seriesAction(w http.ResponseWriter, r *http.Request) {
 	case "resume":
 		_, err = s.St.DB.Exec(`UPDATE series SET paused=0 WHERE id=?`, id)
 		s.Eng.Wake()
-		toast = "Rastreo reanudado"
+		toast = i18n.T("Rastreo reanudado")
 	case "fav":
 		_, err = s.St.DB.Exec(`UPDATE series SET favorite=1-favorite WHERE id=?`, id)
 	case "verify":
@@ -802,7 +810,7 @@ func (s *Server) seriesAction(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), 3*time.Minute)
 		err = s.Eng.CheckSeries(ctx, id)
 		cancel()
-		toast = "Source consultado"
+		toast = i18n.T("Source consultado")
 	case "queue":
 		var ids []int64
 		r.ParseForm()
@@ -1126,7 +1134,7 @@ func (s *Server) sourcePrefs(w http.ResponseWriter, r *http.Request) {
 		s.St.DB.QueryRow(`SELECT count(*) FROM series_source WHERE source_id=?`, a).Scan(&used)
 		adult = M{"On": s.adultFor(id), "Used": used}
 	}
-	s.render(w, "source_prefs", M{"ID": id, "Prefs": pr.Prefs, "Saved": r.FormValue("saved"), "PrefErr": prefErr, "Adult": adult,
+	s.render(w, "source_prefs", M{"ID": id, "Prefs": pr.Prefs, "Saved": r.FormValue("saved"), "PrefErr": prefErr, "Adult": adult, "Langs": s.langSiblings(id),
 		"Ver": M{"Cur": cur, "Old": s.Repo.OldVersions(pkg), "Pinned": pinned == 1, "Latest": latest}})
 }
 
@@ -1158,6 +1166,46 @@ func (s *Server) sourceVersion(w http.ResponseWriter, r *http.Request) {
 		}
 		w.Header().Set("HX-Trigger-After-Settle", `{"srcchanged":true}`)
 	}
+	s.sourcePrefs(w, r)
+}
+
+// langSiblings: los idiomas de una extensión que trae varios (MangaDex trae 60), cada uno un source aparte. Nil si
+// solo tiene uno. No cuenta las versiones +18, que van con su normal.
+func (s *Server) langSiblings(id string) []M {
+	adult := s.adultSiblings()
+	var out []M
+	for _, x := range s.rows(`SELECT b.id, b.lang, b.enabled, (SELECT count(*) FROM series_source ss WHERE ss.source_id=b.id) AS used
+		FROM source a JOIN source b ON b.pkg=a.pkg WHERE a.id=? ORDER BY b.lang`, id) {
+		if _, ok := adult[x["id"].(string)]; !ok {
+			out = append(out, x)
+		}
+	}
+	if len(out) < 2 {
+		return nil
+	}
+	return out
+}
+
+// sourceLang activa o desactiva un idioma de la extensión desde su modal. Uno que ya usa alguna serie no se quita.
+func (s *Server) sourceLang(w http.ResponseWriter, r *http.Request) {
+	sib := r.FormValue("sib")
+	var on, used int
+	if s.St.DB.QueryRow(`SELECT b.enabled, (SELECT count(*) FROM series_source ss WHERE ss.source_id=b.id)
+		FROM source a JOIN source b ON b.pkg=a.pkg WHERE a.id=? AND b.id=?`, r.PathValue("id"), sib).Scan(&on, &used) != nil {
+		http.NotFound(w, r)
+		return
+	}
+	if on == 1 && used > 0 {
+		fail(w, 409, i18n.Errorf("Lo usa alguna serie: quítalo de ella primero"))
+		return
+	}
+	s.St.DB.Exec(`UPDATE source SET enabled=? WHERE id=?`, 1-on, sib)
+	s.ApplyAdult()
+	if on == 0 {
+		s.probeSource(sib)
+		s.Eng.Wake()
+	}
+	w.Header().Set("HX-Trigger-After-Settle", `{"srcchanged":true}`)
 	s.sourcePrefs(w, r)
 }
 

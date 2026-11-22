@@ -18,9 +18,10 @@ type Report struct {
 	ChaptersNew     int      `json:"chapters_new"`
 	ChaptersSeen    int      `json:"chapters_seen"`
 	ChaptersChanged int      `json:"chapters_changed"`
-	Ignored         []string `json:"ignored"`         // carpetas con rensaio.json pero sin ningún CBZ
-	JSONPhantoms    int      `json:"json_phantoms"`   // archivos que rensaio.json lista y NO existen (no se crean)
-	MissingOnDisk   int      `json:"missing_on_disk"` // capítulos de la BD cuyo CBZ ha desaparecido
+	Ignored         []string `json:"ignored"`           // carpetas con rensaio.json pero sin ningún CBZ
+	JSONPhantoms    int      `json:"json_phantoms"`     // archivos que rensaio.json lista y NO existen (no se crean)
+	MissingOnDisk   int      `json:"missing_on_disk"`   // capítulos de la BD cuyo CBZ ha desaparecido
+	Offline         bool     `json:"offline,omitempty"` // faltaban casi todos: se da por desmontado y no se toca nada
 	Unreadable      []string `json:"unreadable"`
 	DurationMillis  int64    `json:"ms"`
 }
@@ -243,7 +244,9 @@ func Scan(db *sql.DB, root string) (*Report, error) {
 	rows, err := db.Query(`SELECT id, cbz FROM chapter WHERE state='downloaded' AND cbz<>''`)
 	if err == nil {
 		var gone []int64
+		total := 0
 		for rows.Next() {
+			total++
 			var id int64
 			var p string
 			rows.Scan(&id, &p)
@@ -252,6 +255,12 @@ func Scan(db *sql.DB, root string) (*Report, error) {
 			}
 		}
 		rows.Close()
+		// casi todo «desaparecido» a la vez no es que lo hayas borrado: el disco no está montado o no se puede leer.
+		// Entonces no se toca nada (al volver el disco, todo sigue como estaba)
+		if len(gone) > 10 && len(gone)*2 > total {
+			rep.Offline = true
+			gone = nil
+		}
 		for _, id := range gone {
 			db.Exec(`UPDATE chapter SET state='available', cbz='', pages=0, bytes=0 WHERE id=?`, id)
 		}

@@ -13,6 +13,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 )
 
 // ComicInfo: subconjunto del esquema que escribimos y leemos.
@@ -47,8 +48,12 @@ func SafeName(s string) string {
 	s = strings.TrimSpace(badChars.ReplaceAllString(s, " "))
 	s = strings.Join(strings.Fields(s), " ")
 	s = strings.TrimRight(s, ". ")
-	if len(s) > 150 {
-		s = strings.TrimSpace(s[:150])
+	if len(s) > 150 { // en bytes, sin partir un carácter de varios bytes (títulos en japonés, coreano…)
+		cut := 150
+		for cut > 0 && !utf8.RuneStart(s[cut]) {
+			cut--
+		}
+		s = strings.TrimRight(s[:cut], ". ")
 	}
 	if s == "" {
 		s = "sin título"
@@ -79,7 +84,9 @@ func ChapterFile(source, lang, series, chapterName string, number float64) strin
 	if name == "" {
 		name = "Capítulo " + strings.TrimLeft(FormatNumber(number), "0")
 	}
-	return SafeName(fmt.Sprintf("[%s][%s] %s (%s) %s", source, lang, series, name, FormatNumber(number))) + ".cbz"
+	// el número va aparte: si el nombre es muy largo se recorta lo de delante, nunca el número (si no, dos capítulos
+	// acabarían con el mismo archivo)
+	return SafeName(fmt.Sprintf("[%s][%s] %s (%s)", source, lang, series, name)) + " " + FormatNumber(number) + ".cbz"
 }
 
 func IsImage(name string) bool {

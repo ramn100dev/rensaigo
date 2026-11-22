@@ -159,6 +159,6 @@ body{margin:0;background:#000;color:#ccc;font:14px UI,system-ui,sans-serif}
 {{if .Prev}}<a href="/read/{{.Prev.id}}">‹ {{t "anterior"}}</a>{{end}}{{if .Next}}<a href="/read/{{.Next.id}}">{{t "siguiente"}} ›</a>{{end}}</div>
 <div id="pages"></div>
 <div id="end">{{if .Next}}<a href="/read/{{.Next.id}}">{{t "Siguiente capítulo"}} ›</a>{{end}}<a href="/library/{{.C.series_id}}">{{t "Volver a la serie"}}</a></div>
-<script>window.I18N={{jsdict}};window.READER={id:{{.C.id}},series:{{.C.series_id}},pages:{{.C.pages}},start:{{if .C.done}}0{{else}}{{.C.page}}{{end}},prev:{{if .Prev}}{{.Prev.id}}{{else}}0{{end}},next:{{if .Next}}{{.Next.id}}{{else}}0{{end}}};</script>
+<script>window.I18N={{jsdict}};window.READER={id:{{.C.id}},v:{{.C.cbz_mtime}},series:{{.C.series_id}},pages:{{.C.pages}},start:{{if .C.done}}0{{else}}{{.C.page}}{{end}},prev:{{if .Prev}}{{.Prev.id}}{{else}}0{{end}},next:{{if .Next}}{{.Next.id}}{{else}}0{{end}}};</script>
 <script src="/static/reader.js?v={{v}}"></script>
 </body></html>{{end}}

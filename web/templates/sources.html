@@ -62,8 +62,12 @@
 <label><b>{{t "Contenido +18"}}</b><span class="mut small">{{t "Trae aparte su versión +18 (misma web): activada, también busca y descarga ahí."}}{{if .Used}} {{t "Alguna serie ya la usa, así que sigue activa."}}{{end}}</span></label>
 <button class="switch{{if or .On .Used}} on{{end}}"{{if .Used}} disabled{{end}} hx-post="/sources/{{$.ID}}/prefs" hx-vals='{"key":"rensaigo.adult","value":"{{if .On}}false{{else}}true{{end}}"}' hx-target="#modal-body" title="{{if .On}}{{t "Desactivar"}}{{else}}{{t "Activar"}}{{end}}" aria-label="{{t "Contenido +18"}}"></button>
 </div>{{end}}
+{{with .Langs}}<div class="pref">
+<label><b>{{t "Idiomas"}}</b><span class="mut small">{{t "Cada idioma busca y descarga por separado. Activa los que lees."}}</span></label>
+<div class="tgs">{{range .}}<button class="tg{{if .enabled}} on{{end}}" hx-post="/sources/{{$.ID}}/lang" hx-vals='{"sib":"{{.id}}"}' hx-target="#modal-body"{{if and .enabled .used}} disabled title="{{tn .used "La usa %d serie" "La usan %d series"}}"{{end}}>{{.lang}}</button>{{end}}</div>
+</div>{{end}}
 {{if .PrefErr}}<p class="bad small">{{t "No se pudieron leer sus preferencias:"}} {{.PrefErr}}</p>
-{{else if and (not .Prefs) (not .Adult)}}<p class="mut">{{t "Esta extensión no tiene preferencias."}}</p>{{end}}
+{{else if and (not .Prefs) (not .Adult) (not .Langs)}}<p class="mut">{{t "Esta extensión no tiene preferencias."}}</p>{{end}}
 {{range .Prefs}}{{if .visible}}<form class="pref" hx-post="/sources/{{$.ID}}/prefs" hx-target="#modal-body">
 <input type="hidden" name="key" value="{{.key}}"><input type="hidden" name="type" value="{{.valueType}}">
 <label><b>{{.title}}</b>{{if .summary}}<span class="mut small">{{.summary}}</span>{{end}}</label>

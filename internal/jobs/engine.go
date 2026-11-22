@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"image"
 	_ "image/gif"
@@ -65,6 +66,32 @@ type Active struct {
 	Source    string `json:"source"`
 	Done      int    `json:"done"`
 	Total     int    `json:"total"`
+
+	series int64
+	cancel context.CancelFunc
+}
+
+// errGone: el capítulo dejó de existir mientras se descargaba (serie borrada, source quitado): no se guarda nada.
+var errGone = errors.New("capítulo eliminado durante la descarga")
+
+// CancelSeries para las descargas en curso de una serie (se va a borrar) y espera un poco a que terminen, para
+// que ninguna vuelva a crear su carpeta.
+func (e *Engine) CancelSeries(seriesID int64) {
+	for i := 0; i < 50; i++ {
+		n := 0
+		e.mu.Lock()
+		for _, a := range e.active {
+			if a.series == seriesID {
+				a.cancel()
+				n++
+			}
+		}
+		e.mu.Unlock()
+		if n == 0 {
+			return
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
 }
 
 type limiter struct {
@@ -684,19 +711,22 @@ func (e *Engine) dispatch(ctx context.Context) {
 			}
 			e.turn++
 			e.served[c.series] = e.turn
-			a := &Active{ChapterID: c.id, Series: c.title, Chapter: label, Source: c.srcName}
+			dctx, dcancel := context.WithCancel(ctx)
+			a := &Active{ChapterID: c.id, Series: c.title, Chapter: label, Source: c.srcName, series: c.series, cancel: dcancel}
 			e.active[c.id] = a
 			e.srcBusy[c.source]++
 			if !c.upg { // una sustitución sigue «downloaded»: el capítulo viejo se puede leer mientras tanto
 				e.St.DB.Exec(`UPDATE chapter SET state='downloading' WHERE id=?`, c.id)
 			}
 			go func(id int64, source string, a *Active) {
-				err := e.download(ctx, id, a)
+				err := e.download(dctx, id, a)
+				cancelled := dctx.Err() != nil
+				dcancel()
 				e.mu.Lock()
 				delete(e.active, id)
 				e.srcBusy[source]--
 				e.mu.Unlock()
-				if err != nil && ctx.Err() == nil {
+				if err != nil && !cancelled && !errors.Is(err, errGone) {
 					e.fail(id, err)
 				}
 				e.Wake()
@@ -855,6 +885,14 @@ func (e *Engine) download(ctx context.Context, id int64, a *Active) error {
 		info.Year, info.Month, info.Day = t.Year(), int(t.Month()), t.Day()
 	}
 	dest := filepath.Join(sPath, library.ChapterFile(srcName, lang, sTitle, name, number))
+	var other int64
+	if e.St.DB.QueryRow(`SELECT id FROM chapter WHERE cbz=? AND id<>?`, dest, id).Scan(&other) == nil {
+		// el nombre ya es de otro capítulo (títulos muy largos o repetidos): no se pisa su archivo
+		dest = strings.TrimSuffix(dest, ".cbz") + fmt.Sprintf(" [%d].cbz", id)
+	}
+	if e.St.DB.QueryRow(`SELECT id FROM chapter WHERE id=?`, id).Scan(&other) != nil {
+		return errGone
+	}
 	size, err := library.WriteCBZ(dest, files, info)
 	if err != nil {
 		return fmt.Errorf("empaquetado: %w", err)

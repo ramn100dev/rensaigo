@@ -1,5 +1,6 @@
 // Lector: modo vertical (tira continua) o paginado, con dirección manga (derecha a izquierda) opcional.
-// El progreso se guarda en el servidor; las preferencias de lectura, en localStorage.
+// El progreso se guarda en el servidor; las preferencias de lectura, en localStorage. Las páginas llevan la fecha del
+// CBZ (?v=): si el capítulo se sustituye por el de otro source, el navegador no enseña las de antes.
 (function () {
   const L = s => (window.I18N && window.I18N[s]) || s;
   const cfg = window.READER, root = document.getElementById('pages'), bar = document.getElementById('pos');
@@ -20,7 +21,7 @@
   }
   function img(i, lazy) {
     const el = document.createElement('img');
-    el.src = '/page/' + cfg.id + '/' + i; el.dataset.i = i; el.alt = L('Página') + ' ' + (i + 1);
+    el.src = '/page/' + cfg.id + '/' + i + '?v=' + cfg.v; el.dataset.i = i; el.alt = L('Página') + ' ' + (i + 1);
     if (lazy) el.loading = 'lazy';
     return el;
   }
@@ -49,7 +50,7 @@
     } else {
       window.onscroll = null;
       root.appendChild(img(cur, false));
-      if (cur + 1 < cfg.pages) { const pre = new Image(); pre.src = '/page/' + cfg.id + '/' + (cur + 1); }
+      if (cur + 1 < cfg.pages) { const pre = new Image(); pre.src = '/page/' + cfg.id + '/' + (cur + 1) + '?v=' + cfg.v; }
       window.scrollTo(0, 0);
     }
     setPos();

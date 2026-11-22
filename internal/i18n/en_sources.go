@@ -66,5 +66,14 @@ func init() {
 		"Medido":                                        "Measured",
 		"Has añadido series después: vuelve a escanear": "You added series since: scan again",
 		"%d de %d": "%d of %d",
+		"Idiomas":  "Languages",
+		"Cada idioma busca y descarga por separado. Activa los que lees.": "Each language searches and downloads on its own. Turn on the ones you read.",
+		"La usa %d serie":   "Used by %d series",
+		"La usan %d series": "Used by %d series",
+		"Lo usa alguna serie: quítalo de ella primero": "A series uses it: remove it from that series first",
+		"Rastreo reanudado":                            "Tracking resumed",
+		"sin portada":                                  "no cover",
+		"Source consultado":                            "Source checked",
+		"no se encuentran casi ninguno de los archivos de %s: ¿el disco está desmontado? No se ha cambiado nada": "almost none of the files in %s can be found: is the disk unmounted? Nothing was changed",
 	})
 }

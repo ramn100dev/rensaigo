@@ -99,14 +99,19 @@ func (s *Server) cards(where string, args ...any) []M {
 		se["track_label"] = i18n.T(trackLabel[se["track"].(string)])
 		se["pub_label"] = i18n.T(pubLabel[pub])
 
-		// capítulo en curso: el último abierto; si se terminó, el siguiente descargado
+		// capítulo en curso: el último abierto; si ya estaba terminado, el siguiente al más alto leído (reabrir uno
+		// antiguo para releerlo no hace retroceder la tarjeta)
 		p, started := last[id]
 		if started && p.done {
 			var n float64
 			var pages int64
-			if s.St.DB.QueryRow(`SELECT number, pages FROM chapter WHERE series_id=? AND state='downloaded' AND number>? ORDER BY number LIMIT 1`,
-				id, p.num).Scan(&n, &pages) == nil {
+			if s.St.DB.QueryRow(`SELECT number, pages FROM chapter WHERE series_id=? AND state='downloaded' AND number>
+				(SELECT coalesce(max(c.number),0) FROM chapter c JOIN progress p ON p.chapter_id=c.id WHERE c.series_id=? AND p.done=1)
+				ORDER BY number LIMIT 1`, id, id).Scan(&n, &pages) == nil {
 				p = pos{num: n, pages: pages}
+			} else if s.St.DB.QueryRow(`SELECT max(c.number) FROM chapter c JOIN progress p ON p.chapter_id=c.id
+				WHERE c.series_id=? AND p.done=1 AND c.state='downloaded'`, id).Scan(&n) == nil && n > p.num {
+				p.num = n // todo leído: la tarjeta se queda en el último, no en el que reabriste
 			}
 		}
 		if !started {
@@ -295,6 +300,7 @@ func (s *Server) deleteSeries(id int64) error {
 	rel, err := filepath.Rel(filepath.Clean(s.Cfg.LibraryDir), filepath.Clean(path))
 	safe := err == nil && !strings.HasPrefix(rel, "..") && len(strings.Split(rel, string(filepath.Separator))) == 2
 	s.St.DB.Exec(`UPDATE series SET paused=1 WHERE id=?`, id) // que no empiece ninguna descarga mientras tanto
+	s.Eng.CancelSeries(id)                                    // y las que están en curso se paran sin escribir nada
 	if _, err := s.St.DB.Exec(`DELETE FROM series WHERE id=?`, id); err != nil {
 		return err
 	}
