@@ -102,8 +102,10 @@ func TestSidecarFlush(t *testing.T) {
 		t.Fatal(err)
 	}
 	var sc struct {
-		Sources []struct{ SourceID string `json:"source_id"` }
-		Read    []string
+		Sources []struct {
+			SourceID string `json:"source_id"`
+		}
+		Read []string
 	}
 	json.Unmarshal(b, &sc)
 	if len(sc.Sources) == 0 || sc.Sources[0].SourceID != "A" || len(sc.Read) != 1 {

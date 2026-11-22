@@ -25,7 +25,7 @@ func TestSettingsApply(t *testing.T) {
 		t.Errorf("no se aplicó: %+v", c)
 	}
 	bad := map[string]string{
-		"check_interval": "5m",   // por debajo del mínimo (10 min)
+		"check_interval": "5m", // por debajo del mínimo (10 min)
 		"rate_interval":  "-1s",
 		"dl_concurrency": "0",
 		"per_source":     "dos",
