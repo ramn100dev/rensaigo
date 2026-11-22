@@ -28,6 +28,7 @@ func (s *Server) queue(w http.ResponseWriter, r *http.Request) {
 }
 
 type Status struct {
+	Version    string         `json:"version"`
 	UptimeS    int64          `json:"uptime_s"`
 	CoreRSSKb  int64          `json:"core_rss_kb"`
 	CoreHWMKb  int64          `json:"core_hwm_kb"`
@@ -62,7 +63,7 @@ func selfMem() (rss, hwm int64) {
 func (s *Server) status() Status {
 	var ms runtime.MemStats
 	runtime.ReadMemStats(&ms)
-	st := Status{UptimeS: int64(time.Since(s.start).Seconds()), GoHeapKb: ms.HeapAlloc / 1024, GoSysKb: ms.Sys / 1024,
+	st := Status{Version: config.Version, UptimeS: int64(time.Since(s.start).Seconds()), GoHeapKb: ms.HeapAlloc / 1024, GoSysKb: ms.Sys / 1024,
 		Goroutines: runtime.NumGoroutine(), Host: s.Host.Stats(), Queue: s.Eng.Snapshot()}
 	st.CoreRSSKb, st.CoreHWMKb = selfMem()
 	st.ThumbBytes, st.ThumbFiles = s.Thumbs.Size()

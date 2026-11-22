@@ -159,8 +159,8 @@ func main() {
 
 	hs := &http.Server{Addr: cfg.Addr, Handler: srv.Handler(), ReadHeaderTimeout: 10 * time.Second}
 	go func() {
-		log.Printf("rensaigo escuchando en %s (config=%s, biblioteca=%s, auth=%v, keep-alive host=%s, comprobación cada %s)",
-			cfg.Addr, cfg.ConfigDir, cfg.LibraryDir, cfg.Password != "", cfg.HostKeepAlive, cfg.CheckInterval)
+		log.Printf("rensaigo %s escuchando en %s (config=%s, biblioteca=%s, auth=%v, keep-alive host=%s, comprobación cada %s)",
+			config.Version, cfg.Addr, cfg.ConfigDir, cfg.LibraryDir, cfg.Password != "", cfg.HostKeepAlive, cfg.CheckInterval)
 		if err := hs.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("http: %v", err)
 		}

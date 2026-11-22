@@ -4,6 +4,12 @@
     <img src="docs/img/logo-light.svg" alt="Rensaigo" height="72">
   </picture>
 </p>
+<p align="center">
+  <a href="https://github.com/ramn100dev/rensaigo/actions/workflows/image.yml"><img src="https://github.com/ramn100dev/rensaigo/actions/workflows/image.yml/badge.svg" alt="Build"></a>
+  <a href="https://github.com/ramn100dev/rensaigo/releases"><img src="https://img.shields.io/github/v/release/ramn100dev/rensaigo" alt="Release"></a>
+  <a href="https://github.com/ramn100dev/rensaigo/pkgs/container/rensaigo"><img src="https://img.shields.io/badge/image-ghcr.io-2496ED?logo=docker&logoColor=white" alt="Docker image"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="MIT"></a>
+</p>
 
 **[English](README.md)**
 
@@ -44,6 +50,13 @@ decenas de MB de RAM. Los sources con Cloudflare pasan por un **FlareSolverr** e
   sin volver a descargar nada.
 - Interfaz **adaptada al móvil** (renderizada en el servidor con htmx, sin Node), en inglés y español (Ajustes → Idioma de la interfaz).
 - Los secretos (tokens, canales de aviso) se guardan cifrados; copias compactas de la base de datos programadas.
+
+## ¿Vienes de Rensaiō o de Kaizoku?
+
+Monta tu biblioteca como `/library` y abre **Ajustes → Importar**: las series, los capítulos y los metadatos de sus
+`rensaio.json` se adoptan tal cual, sin volver a descargar nada ni mover un solo archivo (el esquema de nombres es el
+mismo, `[Source][idioma] Serie (Capítulo) NN.cbz`). Después empareja cada serie con un source (un clic si el título
+coincide) y sigue trayendo los capítulos nuevos.
 
 ## Arranque rápido
 

@@ -1,0 +1,33 @@
+name: Bug report
+description: Something doesn't work as it should
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected and what you got instead.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Shown in Settings → Status, next to "rensaigo" (or in `docker logs rensaigo | head -1`).
+      placeholder: "0.2.0"
+  - type: input
+    id: source
+    attributes:
+      label: Extension / source involved (if any)
+      placeholder: "MangaDex (en), v1.4.205"
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: "`docker logs rensaigo --tail 100`, or the files in /config/logs. Remove anything private."
+      render: text
+  - type: dropdown
+    id: arch
+    attributes:
+      label: Platform
+      options: [linux/amd64, linux/arm64 (Raspberry Pi, Apple Silicon…), other]

@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Questions and ideas
+    url: https://github.com/ramn100dev/rensaigo/discussions
+    about: Setup help, feature ideas and "is this possible?" go here.
+  - name: A source/site stopped working
+    url: https://github.com/keiyoushi/extensions-source/issues
+    about: Broken extensions are fixed upstream by Keiyoushi; check there first (Rensaigo updates extensions on its own).

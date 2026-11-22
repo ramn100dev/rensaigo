@@ -1,7 +1,7 @@
 {{define "system"}}
 <div class="sysgrid">
 <section class="panel">
-<div class="panel-h"><h2>{{t "Estado"}}</h2><span class="mut small">{{tf "en marcha desde hace %s" (dur .St.UptimeS)}}</span></div>
+<div class="panel-h"><h2>{{t "Estado"}}</h2><span class="mut small">rensaigo {{.St.Version}} · {{tf "en marcha desde hace %s" (dur .St.UptimeS)}}</span></div>
 <div class="stats">
 <div class="stat"><span class="k">{{t "Núcleo"}}</span><b>{{kmb .St.CoreRSSKb}}</b><span class="mut small">{{t "pico"}} {{kmb .St.CoreHWMKb}}</span></div>
 <div class="stat"><span class="k">{{t "Host de extensiones"}}</span>{{if .St.Host.Running}}<b>{{kmb .St.Host.RSSKb}}</b><span class="mut small"><span class="dot s-ok"></span>{{t "en marcha"}} · {{.St.Host.LoadedJars}} ext.</span>{{else}}<b>{{t "apagado"}}</b><span class="mut small">{{tf "%d arranques · %d caídas" .St.Host.Starts .St.Host.Crashes}}</span>{{end}}</div>

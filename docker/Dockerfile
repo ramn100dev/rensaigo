@@ -32,7 +32,8 @@ COPY cmd ./cmd
 COPY internal ./internal
 COPY web ./web
 ARG TARGETARCH
-RUN CGO_ENABLED=0 GOARCH=${TARGETARCH:-amd64} go build -trimpath -ldflags="-s -w" -o /out/rensaigo ./cmd/rensaigo \
+ARG VERSION=dev
+RUN CGO_ENABLED=0 GOARCH=${TARGETARCH:-amd64} go build -trimpath -ldflags="-s -w -X rensaigo/internal/config.Version=${VERSION}" -o /out/rensaigo ./cmd/rensaigo \
  && mkdir -p /out/config /out/library
 
 # ---- imagen final

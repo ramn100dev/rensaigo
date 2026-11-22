@@ -8,6 +8,9 @@ import (
 	"time"
 )
 
+// Version la pone el build (-ldflags "-X rensaigo/internal/config.Version=…"); «dev» si se compila a mano.
+var Version = "dev"
+
 type Config struct {
 	Addr        string
 	ConfigDir   string // BD, jars, cookies del host, cachés, logs, backup

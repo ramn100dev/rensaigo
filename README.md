@@ -4,6 +4,12 @@
     <img src="docs/img/logo-light.svg" alt="Rensaigo" height="72">
   </picture>
 </p>
+<p align="center">
+  <a href="https://github.com/ramn100dev/rensaigo/actions/workflows/image.yml"><img src="https://github.com/ramn100dev/rensaigo/actions/workflows/image.yml/badge.svg" alt="Build"></a>
+  <a href="https://github.com/ramn100dev/rensaigo/releases"><img src="https://img.shields.io/github/v/release/ramn100dev/rensaigo" alt="Release"></a>
+  <a href="https://github.com/ramn100dev/rensaigo/pkgs/container/rensaigo"><img src="https://img.shields.io/badge/image-ghcr.io-2496ED?logo=docker&logoColor=white" alt="Docker image"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="MIT"></a>
+</p>
 
 **[Español](README.es.md)**
 
@@ -43,6 +49,13 @@ Cloudflare-protected sources go through an external **FlareSolverr**; the image 
   without downloading anything again.
 - **Mobile friendly** UI (server-rendered, htmx, no Node), in English and Spanish.
 - Secrets (tokens, notification channels) are stored encrypted; compact database backups on a schedule.
+
+## Coming from Rensaiō or Kaizoku?
+
+Mount your existing library as `/library` and open **Settings → Import**: series, chapters and the metadata in
+their `rensaio.json` are adopted as they are, without downloading anything again or moving a single file (the
+naming scheme is the same, `[Source][lang] Series (Chapter) NN.cbz`). Then pair each series with a source (one click
+when the title matches) and it keeps following new chapters.
 
 ## Quick start
 
