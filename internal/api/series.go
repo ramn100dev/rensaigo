@@ -140,7 +140,15 @@ func (s *Server) seriesFollow(w http.ResponseWriter, r *http.Request) {
 	if addTo, _ := strconv.ParseInt(r.FormValue("add_to"), 10, 64); addTo > 0 {
 		// añadir otro source a una serie existente
 		id = addTo
-		if err = s.Eng.AddSource(id, r.FormValue("source"), m.URL, m.Title, string(m.Memo)); err == nil {
+		var n, auto int
+		s.St.DB.QueryRow(`SELECT count(*) FROM series_source WHERE series_id=?`, id).Scan(&n)
+		s.St.DB.QueryRow(`SELECT auto_download FROM series WHERE id=?`, id).Scan(&auto)
+		if v := r.FormValue("auto"); v != "" {
+			auto = b2i(v == "1")
+		}
+		if n == 0 { // el primero de una serie adoptada del disco: como al emparejarla desde Importar
+			_, err = s.linkFirst(ctx, id, r.FormValue("source"), m.URL, m.Title, string(m.Memo), auto == 1, formFloat(r, "from"))
+		} else if err = s.Eng.AddSource(id, r.FormValue("source"), m.URL, m.Title, string(m.Memo)); err == nil {
 			err = s.Eng.CheckSeries(ctx, id)
 		}
 	} else {

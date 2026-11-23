@@ -124,6 +124,82 @@ func Scan(db *sql.DB, root string) (*Report, error) {
 				rep.ChaptersSeen += len(cbzs)
 				continue
 			}
+			// Los CBZ se leen ANTES de abrir la transacción: en un disco lento, una carpeta de cientos de capítulos
+			// tarda más que el busy_timeout y, con la escritura cogida, cualquier otra («instalar», «seguir»…)
+			// fallaría con «database is locked».
+			type item struct {
+				path               string
+				st                 os.FileInfo
+				k                  known
+				seen, same         bool
+				pages              int
+				number             float64
+				chName, src, lang  string
+				web                string
+				unreadable, failed bool
+			}
+			var items []item
+			for _, name := range cbzs {
+				it := item{path: filepath.Join(dir, name)}
+				st, err := os.Stat(it.path)
+				if err != nil {
+					continue
+				}
+				it.st = st
+				if k, ok := seen[it.path]; ok {
+					it.k, it.seen = k, true
+					it.same = k.size == st.Size() && (k.mtime == 0 || k.mtime == st.ModTime().Unix())
+					if !it.same {
+						if c, err := OpenCBZ(it.path, false); err == nil {
+							it.pages = len(c.Pages)
+							c.Close()
+						} else {
+							it.failed = true
+						}
+					}
+					items = append(items, it)
+					continue
+				}
+				c, err := OpenCBZ(it.path, true)
+				if err != nil || len(c.Pages) == 0 {
+					if c != nil {
+						c.Close()
+					}
+					it.unreadable = true
+					items = append(items, it)
+					continue
+				}
+				it.number = -1
+				if m := fileRe.FindStringSubmatch(name); m != nil {
+					it.src, it.lang, it.chName = m[1], m[2], m[4]
+					if m[5] != "" {
+						it.number, _ = strconv.ParseFloat(m[5], 64)
+					}
+				}
+				if ci := c.Info; ci != nil {
+					if n, err := strconv.ParseFloat(strings.TrimSpace(ci.Number), 64); err == nil {
+						it.number = n
+					}
+					if ci.Title != "" {
+						it.chName = ci.Title
+					}
+					if ci.LanguageISO != "" {
+						it.lang = ci.LanguageISO
+					}
+					if it.src == "" {
+						it.src = ci.Translator
+					}
+					it.web = ci.Web
+				}
+				if it.number < 0 {
+					if m := lastNo.FindStringSubmatch(strings.TrimSuffix(name, ".cbz")); m != nil {
+						it.number, _ = strconv.ParseFloat(m[1], 64)
+					}
+				}
+				it.pages = len(c.Pages)
+				c.Close()
+				items = append(items, it)
+			}
 			tx, err := db.Begin()
 			if err != nil {
 				return nil, err
@@ -161,76 +237,35 @@ func Scan(db *sql.DB, root string) (*Report, error) {
 			} else {
 				rep.SeriesSeen++
 			}
-			for _, name := range cbzs {
-				path := filepath.Join(dir, name)
-				st, err := os.Stat(path)
-				if err != nil {
-					continue
-				}
-				if k, ok := seen[path]; ok {
-					if k.size == st.Size() && (k.mtime == 0 || k.mtime == st.ModTime().Unix()) {
-						if k.mtime == 0 { // fila anterior a la columna de fecha: se anota sin releer
-							tx.Exec(`UPDATE chapter SET cbz_mtime=? WHERE id=?`, st.ModTime().Unix(), k.id)
-						}
-						rep.ChaptersSeen++
-						continue
+			for _, it := range items {
+				st := it.st
+				switch {
+				case it.seen && it.same:
+					if it.k.mtime == 0 { // fila anterior a la columna de fecha: se anota sin releer
+						tx.Exec(`UPDATE chapter SET cbz_mtime=? WHERE id=?`, st.ModTime().Unix(), it.k.id)
 					}
-					// el fichero ha cambiado: se relee y se actualiza su fila
-					if c, err := OpenCBZ(path, false); err == nil {
-						tx.Exec(`UPDATE chapter SET pages=?, bytes=?, cbz_mtime=? WHERE id=?`, len(c.Pages), st.Size(), st.ModTime().Unix(), k.id)
-						c.Close()
+					rep.ChaptersSeen++
+				case it.seen:
+					// el fichero ha cambiado: se ha releído y se actualiza su fila
+					if !it.failed {
+						tx.Exec(`UPDATE chapter SET pages=?, bytes=?, cbz_mtime=? WHERE id=?`, it.pages, st.Size(), st.ModTime().Unix(), it.k.id)
 						rep.ChaptersChanged++
 					}
-					continue
+				case it.unreadable:
+					rep.Unreadable = append(rep.Unreadable, it.path)
+				default:
+					// Si el capítulo ya se conocía (p. ej. "available" tras una comprobación), se adopta el fichero.
+					res, _ := tx.Exec(`UPDATE chapter SET state='downloaded', cbz=?, pages=?, bytes=?, cbz_mtime=?, error='' WHERE series_id=? AND number=? AND cbz=''`,
+						it.path, it.pages, st.Size(), st.ModTime().Unix(), sid, it.number)
+					if n, _ := res.RowsAffected(); n == 0 {
+						if _, err := tx.Exec(`INSERT INTO chapter(series_id,number,name,state,web_url,source_name,lang,cbz,pages,bytes,cbz_mtime,created)
+							VALUES(?,?,?,'downloaded',?,?,?,?,?,?,?,?)`, sid, it.number, it.chName, it.web, it.src, it.lang, it.path, it.pages, st.Size(), st.ModTime().Unix(), now); err != nil {
+							rep.Unreadable = append(rep.Unreadable, it.path+": "+err.Error())
+							continue
+						}
+					}
+					rep.ChaptersNew++
 				}
-				c, err := OpenCBZ(path, true)
-				if err != nil || len(c.Pages) == 0 {
-					if c != nil {
-						c.Close()
-					}
-					rep.Unreadable = append(rep.Unreadable, path)
-					continue
-				}
-				number, chName, src, lang, web := -1.0, "", "", "", ""
-				if m := fileRe.FindStringSubmatch(name); m != nil {
-					src, lang, chName = m[1], m[2], m[4]
-					if m[5] != "" {
-						number, _ = strconv.ParseFloat(m[5], 64)
-					}
-				}
-				if ci := c.Info; ci != nil {
-					if n, err := strconv.ParseFloat(strings.TrimSpace(ci.Number), 64); err == nil {
-						number = n
-					}
-					if ci.Title != "" {
-						chName = ci.Title
-					}
-					if ci.LanguageISO != "" {
-						lang = ci.LanguageISO
-					}
-					if src == "" {
-						src = ci.Translator
-					}
-					web = ci.Web
-				}
-				if number < 0 {
-					if m := lastNo.FindStringSubmatch(strings.TrimSuffix(name, ".cbz")); m != nil {
-						number, _ = strconv.ParseFloat(m[1], 64)
-					}
-				}
-				pages := len(c.Pages)
-				c.Close()
-				// Si el capítulo ya se conocía (p. ej. "available" tras una comprobación), se adopta el fichero.
-				res, _ := tx.Exec(`UPDATE chapter SET state='downloaded', cbz=?, pages=?, bytes=?, cbz_mtime=?, error='' WHERE series_id=? AND number=? AND cbz=''`,
-					path, pages, st.Size(), st.ModTime().Unix(), sid, number)
-				if n, _ := res.RowsAffected(); n == 0 {
-					if _, err := tx.Exec(`INSERT INTO chapter(series_id,number,name,state,web_url,source_name,lang,cbz,pages,bytes,cbz_mtime,created)
-						VALUES(?,?,?,'downloaded',?,?,?,?,?,?,?,?)`, sid, number, chName, web, src, lang, path, pages, st.Size(), st.ModTime().Unix(), now); err != nil {
-						rep.Unreadable = append(rep.Unreadable, path+": "+err.Error())
-						continue
-					}
-				}
-				rep.ChaptersNew++
 			}
 			if restore != nil {
 				applySidecar(tx, sid, dir, restore, now)

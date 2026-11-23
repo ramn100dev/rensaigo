@@ -10,6 +10,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html/template"
 	"log"
@@ -305,10 +306,36 @@ func trigger(w http.ResponseWriter, ev M) {
 	w.Header().Set("HX-Trigger", sb.String())
 }
 
+// errKind: el tipo de un error del host («cloudflare», «network», «webview»…) o «internal» si no viene del host
+// (p. ej. un fallo de la base de datos).
+func errKind(err error) string {
+	var he *hostproc.Error
+	if errors.As(err, &he) {
+		return he.Kind
+	}
+	return "internal"
+}
+
+// apiErr responde a la API JSON con el error legible, su tipo y, si se ha traducido, el original.
+func (s *Server) apiErr(w http.ResponseWriter, err error) {
+	w.WriteHeader(502)
+	m := M{"error": friendlyErr(err), "kind": errKind(err)}
+	if raw := err.Error(); raw != m["error"] {
+		m["detail"] = raw
+	}
+	s.json(w, m)
+}
+
 var httpCodeRe = regexp.MustCompile(`HTTP error (\d{3})`)
 
 // friendlyErr traduce los errores típicos de un sitio caído a algo legible; el resto se deja tal cual.
 func friendlyErr(err error) string {
+	switch errKind(err) {
+	case "webview":
+		return i18n.T("Esta extensión necesita un navegador integrado (WebView), que rensaigo no incluye. Usa otro source para esta serie.")
+	case "android":
+		return i18n.T("Esta extensión usa una parte de Android que rensaigo no puede imitar. Usa otro source para esta serie.")
+	}
 	msg := err.Error()
 	m := httpCodeRe.FindStringSubmatch(msg)
 	if m == nil {

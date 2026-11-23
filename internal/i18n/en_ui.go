@@ -23,5 +23,7 @@ func init() {
 		"Descargas reanudadas": "Downloads resumed",
 		"%d ajustes guardados": "%d settings saved",
 		"Sin cambios":          "No changes",
+		"Esta extensión necesita un navegador integrado (WebView), que rensaigo no incluye. Usa otro source para esta serie.": "This extension needs a built-in browser (WebView), which rensaigo doesn't include. Use another source for this series.",
+		"Esta extensión usa una parte de Android que rensaigo no puede imitar. Usa otro source para esta serie.":              "This extension uses a part of Android that rensaigo can't emulate. Use another source for this series.",
 	})
 }

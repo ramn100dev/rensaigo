@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.2.1 — 2026-11-23
+
+Fixes reported by the first user migrating from Rensaiō (#1).
+
+**Fixed**
+- Linking a source to an imported series no longer queues every older chapter that is not on disk (a series kept as
+  volumes plus chapters from 374 queued 348 chapters). What the source has below the highest chapter on disk stays
+  *available*; only newer chapters are queued. `/import/{id}/match`, `/import/{id}/auto` and `/series/follow` with
+  `add_to` also take `from` to start at a given chapter.
+- Adding the first source of an imported series with `/series/follow` + `add_to` left it paused.
+- `POST /api/install` enabled all 60 languages of a multi-language extension; it now does the same as the button
+  (only your preferred language) and probes the new sources.
+- The library scan no longer reads CBZ files while holding the database write lock: on a slow disk the first scan of
+  a big library could make other actions fail with `database is locked`.
+- API errors that do not come from the extension host are reported as `"kind": "internal"` instead of `"host"`, and
+  carry a readable message (the original goes in `detail`).
+- Extensions that need a built-in browser (WebView) say so clearly instead of showing a Java stack trace.
+
 ## 0.2.0 — 2026-11-23
 
 Robustness release: a full review with many more tests (download engine, extension host supervisor, every page in

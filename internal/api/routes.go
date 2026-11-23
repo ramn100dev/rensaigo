@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"time"
 
-	"rensaigo/internal/hostproc"
 	"rensaigo/web"
 )
 
@@ -95,8 +94,7 @@ func (s *Server) Handler() http.Handler {
 		defer cancel()
 		ms, err := s.Eng.Search(ctx, r.FormValue("source"), r.FormValue("q"))
 		if err != nil {
-			w.WriteHeader(502)
-			s.json(w, M{"error": err.Error(), "kind": hostproc.Kind(err)})
+			s.apiErr(w, err)
 			return
 		}
 		s.json(w, ms)
@@ -107,10 +105,9 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/install", func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), 3*time.Minute)
 		defer cancel()
-		srcs, err := s.Repo.Install(ctx, r.FormValue("pkg"))
+		srcs, err := s.installExt(ctx, r.FormValue("pkg"))
 		if err != nil {
-			w.WriteHeader(502)
-			s.json(w, M{"error": err.Error(), "kind": hostproc.Kind(err)})
+			s.apiErr(w, err)
 			return
 		}
 		s.json(w, srcs)

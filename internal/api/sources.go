@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"rensaigo/internal/config"
+	"rensaigo/internal/extrepo"
 	"rensaigo/internal/i18n"
 	"rensaigo/internal/safe"
 )
@@ -139,12 +140,21 @@ func (s *Server) sourcesRefresh(w http.ResponseWriter, r *http.Request) {
 func (s *Server) sourcesInstall(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Minute)
 	defer cancel()
-	infos, err := s.Repo.Install(ctx, r.FormValue("pkg"))
-	if err != nil {
+	if _, err := s.installExt(ctx, r.FormValue("pkg")); err != nil {
 		fail(w, 502, err)
 		return
 	}
-	// una extensión con muchos idiomas (MangaDex trae 60): solo se activan los del idioma preferido, si tiene alguno
+	w.Header().Set("HX-Redirect", "/sources")
+}
+
+// installExt instala una extensión igual desde la web que desde la API: de una extensión con muchos idiomas
+// (MangaDex trae 60) solo se activan los del idioma preferido, si tiene alguno; se aplica el filtro de contenido
+// adulto y los sources que quedan activos se prueban solos (en segundo plano).
+func (s *Server) installExt(ctx context.Context, pkg string) ([]extrepo.SourceInfo, error) {
+	infos, err := s.Repo.Install(ctx, pkg)
+	if err != nil {
+		return nil, err
+	}
 	if len(infos) > 1 {
 		match := false
 		for _, in := range infos {
@@ -167,7 +177,7 @@ func (s *Server) sourcesInstall(w http.ResponseWriter, r *http.Request) {
 			s.probeSource(in.ID) // se prueba sola: no hace falta pulsar «probar»
 		}
 	}
-	w.Header().Set("HX-Redirect", "/sources")
+	return infos, nil
 }
 
 // prefLang: el idioma de un source vale para el preferido («es» incluye «es-419»; «all» lo incluye todo).

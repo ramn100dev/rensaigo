@@ -2,9 +2,11 @@ package api
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -68,18 +70,51 @@ func (s *Server) importCandidates(w http.ResponseWriter, r *http.Request) {
 // ya presentes en disco se reconocen por número y NO se vuelven a descargar.
 func (s *Server) importMatch(w http.ResponseWriter, r *http.Request) {
 	id := pathInt(r, "id")
-	if err := s.Eng.AddSource(id, r.FormValue("source"), r.FormValue("url"), r.FormValue("title"), r.FormValue("memo")); err != nil {
-		fail(w, 500, err)
-		return
-	}
-	s.St.DB.Exec(`UPDATE series SET paused=0, auto_download=? WHERE id=?`, b2i(r.FormValue("auto") == "1"), id)
 	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Minute)
 	defer cancel()
-	if err := s.Eng.CheckSeries(ctx, id); err != nil {
+	if _, err := s.linkFirst(ctx, id, r.FormValue("source"), r.FormValue("url"), r.FormValue("title"), r.FormValue("memo"),
+		r.FormValue("auto") == "1", formFloat(r, "from")); err != nil {
 		fail(w, 502, err)
 		return
 	}
 	w.Header().Set("HX-Redirect", fmt.Sprintf("/library/%d", id))
+}
+
+// linkFirst enlaza un source con una serie que aún no tenía ninguno (adoptada del disco) y la comprueba. Lo que el
+// source tiene por debajo del capítulo más alto en disco queda «disponible», no en cola: una serie importada con
+// tomos sueltos o huecos no se pone a bajar de golpe cientos de capítulos viejos. Lo posterior sí se pone en cola
+// si auto. Con from > 0, el source solo aporta capítulos desde ese número. Deja la serie en marcha (paused=0).
+// linked dice si se llegó a enlazar (el error puede ser solo de la comprobación).
+func (s *Server) linkFirst(ctx context.Context, id int64, src, url, title, memo string, auto bool, from float64) (linked bool, err error) {
+	if err := s.Eng.AddSource(id, src, url, title, memo); err != nil {
+		return false, err
+	}
+	if from > 0 {
+		s.St.DB.Exec(`UPDATE series_source SET from_ch=? WHERE series_id=? AND source_id=?`, from, id, src)
+	}
+	s.St.DB.Exec(`UPDATE series SET auto_download=0 WHERE id=?`, id)
+	err = s.Eng.CheckSeries(ctx, id)
+	if auto {
+		var top sql.NullFloat64
+		s.St.DB.QueryRow(`SELECT max(number) FROM chapter WHERE series_id=? AND state='downloaded'`, id).Scan(&top)
+		floor := -0.5 // sin nada en disco: todo
+		if top.Valid {
+			floor = top.Float64
+		}
+		if res, _ := s.St.DB.Exec(`UPDATE chapter SET state='queued' WHERE series_id=? AND state='available' AND number>?`, id, floor); res != nil {
+			if n, _ := res.RowsAffected(); n > 0 {
+				s.Eng.Wake()
+			}
+		}
+	}
+	s.St.DB.Exec(`UPDATE series SET paused=0, auto_download=? WHERE id=?`, b2i(auto), id)
+	return true, err
+}
+
+// formFloat lee un número de un formulario (admite coma decimal); 0 si falta o no es válido.
+func formFloat(r *http.Request, key string) float64 {
+	f, _ := strconv.ParseFloat(strings.Replace(strings.TrimSpace(r.FormValue(key)), ",", ".", 1), 64)
+	return max(f, 0)
 }
 
 // importAuto empareja una serie importada sin abrir diálogos:
@@ -113,12 +148,10 @@ func (s *Server) importAuto(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 4*time.Minute)
 	defer cancel()
 	link := func(src, url, mtitle, memo string) {
-		if err := s.Eng.AddSource(id, src, url, mtitle, memo); err != nil {
-			row(M{"msg": err.Error()})
+		if linked, err := s.linkFirst(ctx, id, src, url, mtitle, memo, true, formFloat(r, "from")); !linked {
+			row(M{"msg": friendlyErr(err)})
 			return
-		}
-		s.St.DB.Exec(`UPDATE series SET paused=0, auto_download=1 WHERE id=?`, id)
-		if err := s.Eng.CheckSeries(ctx, id); err != nil {
+		} else if err != nil {
 			s.St.Event("importación", "«%s» enlazada con %s, pero la comprobación falló: %v", title, srcName(src), err)
 		}
 		setToast(w, i18n.Tf("«%s» emparejada con %s", title, srcName(src)))
